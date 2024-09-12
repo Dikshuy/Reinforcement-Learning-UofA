@@ -15,7 +15,7 @@ def bellman_updates(V, pi, R, P, T, gamma):
 
 
 def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
-    bellman_error = 1
+    bellman_error = 0
     while True:
         V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
         history.append(bellman_error)
@@ -61,8 +61,8 @@ def optimality_update(s, V, R, P, T, gamma):
 def value_iteration(V, R, P, T, gamma, theta, history):
     while True:
         delta = 0
+        v = V.copy()
         for s in range(n_states):
-            v = V.copy()
             V_s = optimality_update(s, V, R, P, T, gamma)
             V[s] = np.max(V_s)
             delta = max(delta, np.abs(v[s]- V[s]))
@@ -165,6 +165,10 @@ if __name__ == "__main__":
             V = np.full(n_states, init_value)
             history_VI = []
             V, pi_learnt_VI, history_VI = value_iteration(V, R, P, T, gamma, theta, history_VI)
+            print(V)
+            print()
+            print(history_VI)
+            print("------------")
             
             if np.all(pi_learnt_VI == pi_opt):
                 print("optimal policy found using value iteration")
