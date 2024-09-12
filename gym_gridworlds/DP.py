@@ -8,7 +8,7 @@ env.reset()
 
 gammas = [0.01, 0.5, 0.99]
 initial_values = [-10, 0, 10]
-theta = 1e-15
+theta = 1e-50
 max_iterations = 10000
 
 n_states = env.observation_space.n
@@ -18,7 +18,6 @@ R = np.zeros((n_states, n_actions))
 P = np.zeros((n_states, n_actions, n_states))
 T = np.zeros((n_states, n_actions))
 
-# updating the dynamics of MDP
 for s in range(n_states):
     for a in range(n_actions):
         env.set_state(s)
@@ -110,10 +109,6 @@ for gamma in gammas:
         V_pi, history_v = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
         Q_pi, history_q = evaluate_Q_policy(Q_initial, policy, R, P, terminal_state, gamma, theta)
 
-        print("gamma:", gamma, "initial value:", init_value)
-        print(Q_pi)
-        print("-------------------------------------------")
-
         results[gamma][init_value] = {
             'V_pi': V_pi,
             'Q_pi': Q_pi,
@@ -131,29 +126,29 @@ def plot_bellman_error(delta_history, title, ax):
     ax.set_xlabel("Iteration")
     ax.set_ylabel("Bellman Error")
 
-# fig, axs = plt.subplots(3, 3, figsize=(15, 15))
-# fig2, axs2 = plt.subplots(3, 3, figsize=(15, 15))
+fig, axs = plt.subplots(3, 3, figsize=(15, 15))
+fig2, axs2 = plt.subplots(3, 3, figsize=(15, 15))
 
-# for i, gamma in enumerate(gammas):
-#     for j, init_val in enumerate(initial_values):
-#         data = results[gamma][init_val]
-#         plot_heatmap(data['V_pi'], f"V_pi (gamma={gamma}, init_val={init_val})", axs[i, j])
-#         plot_bellman_error(data['delta_history_v'], f"V_pi Bellman Error (gamma={gamma}, init_val={init_val})", axs2[i, j])
+for i, gamma in enumerate(gammas):
+    for j, init_val in enumerate(initial_values):
+        data = results[gamma][init_val]
+        plot_heatmap(data['V_pi'], f"V_pi (gamma={gamma}, init_val={init_val})", axs[i, j])
+        plot_bellman_error(data['delta_history_v'], f"V_pi Bellman Error (gamma={gamma}, init_val={init_val})", axs2[i, j])
 
-# plt.tight_layout()
-# plt.show()
-
-# Q-function heatmaps for each action
-fig, axs = plt.subplots(3, 5, figsize=(20, 12))
-actions = ["left", "down", "right", "up", "stay"]
-data = results[0.99][0]
-plot_heatmap(data['Q_pi'][:, 1], f"Q_pi Action={actions[1]} (gamma={0.99}, init_val={0})", axs[1, 1])
-# for i, gamma in enumerate(gammas):
-#     for j, init_val in enumerate(initial_values):
-#         data = results[gamma][init_val]
-#         for a in range(n_actions):
-#             # plot_bellman_error(data['delta_history_q'], f"Q_pi Bellman Error (gamma={gamma}, init_val={init_val})", axs2[i, j])
-#             plot_heatmap(data['Q_pi'][:, a], f"Q_pi Action={actions[a]} (gamma={gamma}, init_val={init_val})", axs[i, a])
-
-# plt.tight_layout()
+plt.tight_layout()
 plt.show()
+
+# # Q-function heatmaps for each action
+# fig, axs = plt.subplots(3, 5, figsize=(20, 12))
+# actions = ["left", "down", "right", "up", "stay"]
+# data = results[0.99][0]
+# plot_heatmap(data['Q_pi'][:, 1], f"Q_pi Action={actions[1]} (gamma={0.99}, init_val={0})", axs[1, 1])
+# # for i, gamma in enumerate(gammas):
+# #     for j, init_val in enumerate(initial_values):
+# #         data = results[gamma][init_val]
+# #         for a in range(n_actions):
+# #             # plot_bellman_error(data['delta_history_q'], f"Q_pi Bellman Error (gamma={gamma}, init_val={init_val})", axs2[i, j])
+# #             plot_heatmap(data['Q_pi'][:, a], f"Q_pi Action={actions[a]} (gamma={gamma}, init_val={init_val})", axs[i, a])
+
+# # plt.tight_layout()
+# plt.show()
