@@ -51,9 +51,10 @@ def plot_v_function(V, axs, gamma, i, grid_size):
     return im
 
 def plot_q_function(Q, axs, a, gamma, i, grid_size):
+    action_labels = ['Left', 'Down', 'Right', 'Up', 'Stay']
     Q_grid = Q[:, a].reshape((grid_size, grid_size))
     im = axs.imshow(Q_grid, cmap='viridis', interpolation='none')
-    axs.set_title(f'Action {a}, $\gamma$ = {gamma}')
+    axs.set_title(f'Action {action_labels[a]}, $\gamma$ = {gamma}')
     axs.set_xticks([])
     axs.set_yticks([])
     return im
