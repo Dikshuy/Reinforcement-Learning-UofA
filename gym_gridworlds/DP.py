@@ -15,7 +15,7 @@ def policy_evaluation(V, Q, pi, R, P, T, gamma, theta):
 
 def bellman_updates(V, Q, pi, R, P, T, gamma):
     v = V.copy()                                    # copying initial policy
-    pi_V = np.multiply(np.dot(P, V), (1-T))
+    pi_V = np.multiply(np.dot(P, V), (1-T))         # pi*V and removing the terminal state
     V = np.sum(pi * (R + gamma * pi_V),axis=1)      # updating state value function
     Q = R + gamma * pi_V                            # updating state-action value function
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
             axs1[1][i].plot(history)
             axs1[1][i].set_title(f'Convergence History, $\gamma$ = {gamma}')
             axs1[1][i].set_xlabel('Iteration')
-            axs1[1][i].set_ylabel('Delta')
+            axs1[1][i].set_ylabel('Bellman Error')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         filename_v = f'plots_v0_{init_value}.png'
