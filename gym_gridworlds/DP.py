@@ -34,47 +34,15 @@ def bellman_updates(V, Q, pi, R, P, terminal_state, gamma, theta):
     history = []
     for _ in range(max_iterations):
         bellman_error = 0
-        v = V.copy()
-        V = np.sum(pi * (R + gamma * np.matmul(P, V)), axis=1)
-        # Q = R + gamma * 
+        v = V.copy()                                                            # copying initial policy
+        V = np.sum(pi * (R + gamma * np.multiply(np.dot(P, V), 1-T)), axis=1)   # updating state value function
+        Q = R + gamma * np.multiply(np.dot(P, V), (1-T))                        # updating state-action value function
 
-
-def evaluate_V_policy(V, pi, R, P, T,gamma, theta):
-    history = []
-    for _ in range(max_iterations):
-        bellman_error = 0
-        v = V.copy()
-        V = np.sum(pi * (R + gamma * np.multiply(np.dot(P, V), 1-T)), axis=1)
-        # V[terminal_state] = R[terminal_state, pi[terminal_state].argmax()]
-        bellman_error = np.sum(np.abs(v-V))
-        history.append(bellman_error) 
+        bellman_error = np.sum(np.abs(v-V))                                     # computing the bellman error
+        history.append(bellman_error)           
         if bellman_error < theta:
             break  
-    return V, history
-
-def evaluate_Q_policy(Q, pi, R, P, terminal_state, gamma, theta):
-    history = []
-    for _ in range(max_iterations):
-        delta = 0
-        total_bellman_error = 0  
-        
-        for s in range(n_states):
-            if s == terminal_state:
-                continue
-            for a in range(n_actions):
-                q = Q[s, a]
-                Q[s, a] = R[s, a] + gamma * np.sum([P[s, a, s_next] * np.dot(pi[s_next], Q[s_next])
-                                                    for s_next in range(n_states)])
-                
-                bellman_error = abs(q - Q[s, a])
-                total_bellman_error += bellman_error
-                delta = max(delta, bellman_error)
-
-        history.append(total_bellman_error) 
-        if delta < theta:
-            break
-
-    return Q, history
+    return V, Q, history
 
 def optimal_policy():
     '''
@@ -106,87 +74,102 @@ results = {}
 
 terminal_state = 2
 
-# for gamma in gammas:
-#     if gamma not in results:
-#         results[gamma] = {}
-#     for init_value in initial_values:
-#         V_initial = np.full(n_states, init_value)
-#         Q_initial = np.full((n_states, n_actions), init_value)
+'''
+------ MAIN UPDATE LOOP ------
 
-#         policy = optimal_policy()
+def evaluate_V_policy(V, pi, R, P, T,gamma, theta):
+    history = []
+    for _ in range(max_iterations):
+        bellman_error = 0
+        v = V.copy()
+        V = np.sum(pi * (R + gamma * np.multiply(np.dot(P, V), (1-T))), axis=1)
+        bellman_error = np.sum(np.abs(v-V))
+        history.append(bellman_error) 
+        if bellman_error < theta:
+            break  
+    return V, history
 
-#         V_pi, history_v = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
-#         Q_pi, history_q = evaluate_Q_policy(Q_initial, policy, R, P, terminal_state, gamma, theta)
+for gamma in gammas:
+    if gamma not in results:
+        results[gamma] = {}
+    for init_value in initial_values:
+        V_initial = np.full(n_states, init_value)
 
-#         results[gamma][init_value] = {
-#             'V_pi': V_pi,
-#             'Q_pi': Q_pi,
-#             'delta_history_v': history_v,
-#             'delta_history_q': history_q
-#         }
+        policy = optimal_policy()
 
-def plot_heatmap(data, title, ax):
-    sns.heatmap(data.reshape(3, 3), annot=True, fmt=".2f", cbar=False, ax=ax)
-    ax.set_title(title)
+        V_pi, Q_pi, history = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
 
-def plot_bellman_error(delta_history, title, ax):
-    ax.plot(delta_history)
-    ax.set_title(title)
-    ax.set_xlabel("Iteration")
-    ax.set_ylabel("Bellman Error")
+        results[gamma][init_value] = {
+            'V_pi': V_pi,
+            'delta_history': history,
+        }
+'''
+
+policy = optimal_policy()
 
 gammas = [0.01, 0.5, 0.99]
-policy = optimal_policy()
-for init_value in [-10, 0, 10]:
-    fig, axs = plt.subplots(2, len(gammas))
-    fig.suptitle(f"$V_0$: {init_value}")
+init_values = [-10, 0, 10]
+
+def plot_v_function(V, axs, gamma, i, grid_size):
+    V_grid = V.reshape((grid_size, grid_size))
+    im = axs.imshow(V_grid, cmap='viridis', interpolation='none')
+    axs.set_title(f'$\gamma$ = {gamma}')
+    axs.set_xticks([])
+    axs.set_yticks([])
+    return im
+
+def plot_q_function(Q, axs, a, gamma, i, grid_size):
+    Q_grid = Q[:, a].reshape((grid_size, grid_size))
+    im = axs.imshow(Q_grid, cmap='viridis', interpolation='none')
+    axs.set_title(f'Action {a}, $\gamma$ = {gamma}')
+    axs.set_xticks([])
+    axs.set_yticks([])
+    return im
+
+for init_value in init_values:
+    store_q_values = []
+    
+    # Plot for V-function and convergence history
+    fig1, axs1 = plt.subplots(2, len(gammas), figsize=(15, 10))
+    fig1.suptitle(f"State-Value Function $V_0$: {init_value}")
+
     for i, gamma in enumerate(gammas):
-        V, delta_history = evaluate_V_policy(np.full(n_states, init_value), policy, R, P, terminal_state, gamma, theta)
-        grid_size = int(np.sqrt(len(V))) 
-        V_grid = V.reshape((grid_size, grid_size))
+        V = np.full(n_states, init_value)
+        Q = np.full((n_states, n_actions), init_value)
         
-        # Plot value function
-        im = axs[0][i].imshow(V_grid, cmap='viridis', interpolation='none')
-        axs[0][i].set_title(f'$\gamma$ = {gamma}')
-        axs[0][i].set_xticks([])
-        axs[0][i].set_yticks([])
-        fig.colorbar(im, ax=axs[0][i])
+        V, Q, history = bellman_updates(V, Q, policy, R, P, terminal_state, gamma, theta)
+        store_q_values.append(Q)
+
+        grid_size = int(np.sqrt(len(V)))
+        
+        # Plot V function
+        im_v = plot_v_function(V, axs1[0][i], gamma, i, grid_size)
+        fig1.colorbar(im_v, ax=axs1[0][i])
 
         # Plot convergence history
-        axs[1][i].plot(delta_history)
-        axs[1][i].set_title(f'$\gamma$ = {gamma}')
-        axs[1][i].set_xlabel('Iteration')
-        axs[1][i].set_ylabel('Delta')
+        axs1[1][i].plot(history)
+        axs1[1][i].set_title(f'Convergence History, $\gamma$ = {gamma}')
+        axs1[1][i].set_xlabel('Iteration')
+        axs1[1][i].set_ylabel('Delta')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    
-    filename = f'plots_v0_{init_value}.png'
-    plt.savefig(filename)
-    plt.close(fig)
+    filename_v = f'plots_v0_{init_value}.png'
+    plt.savefig(filename_v)
+    plt.close(fig1)
 
-    fig, axs = plt.subplots(n_actions + 1, len(gammas), figsize=(15, 2 * (n_actions + 1)))
-    fig.suptitle(f"$Q_0$: {init_value}")
+    # Plot for Q-function
+    fig2, axs2 = plt.subplots(n_actions, len(gammas), figsize=(15, 3 * n_actions))
+    fig2.suptitle(f"Action-Value Function $Q_0$: {init_value}")
 
     for i, gamma in enumerate(gammas):
-        Q, delta_history = evaluate_Q_policy(np.full((n_states, n_actions), init_value), policy, R, P, terminal_state, gamma, theta)
+        Q = store_q_values[i]
+
         # Plot Q-values for each action
         for a in range(n_actions):
-            # Reshape Q-values into a 2D grid
-            Q_grid = Q[:, a].reshape((grid_size, grid_size))
-            im = axs[a][i].imshow(Q_grid, cmap='viridis', interpolation='none')
-            axs[a][i].set_title(f'Action {a}')
-            axs[a][i].set_xticks([])
-            axs[a][i].set_yticks([])
-            fig.colorbar(im, ax=axs[a][i])
-
-        # Plot convergence history
-        axs[-1, i].plot(delta_history)
-        axs[-1, i].set_title(f'$\gamma$ = {gamma}')
-        axs[-1, i].set_xlabel('Iteration')
-        axs[-1, i].set_ylabel('Delta')
+            im_q = plot_q_function(Q, axs2[a][i], a, gamma, i, grid_size)
+            fig2.colorbar(im_q, ax=axs2[a][i])
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-
-    filename = f'plots_q0_{init_value}.png'
-    plt.savefig(filename)
-    plt.close(fig)
+    filename_q = f'plots_q0_{init_value}.png'
+    plt.savefig(filename_q)
+    plt.close(fig2)
