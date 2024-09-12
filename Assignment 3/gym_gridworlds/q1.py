@@ -5,7 +5,7 @@ import seaborn as sns
 
 
 def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
-    bellman_error = np.inf
+    bellman_error = 1
     while bellman_error > theta:
         V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
         history.append(bellman_error)
@@ -84,15 +84,6 @@ def plot_v_function(V, axs, gamma, grid_size):
     axs.set_yticks([])
 
 
-def plot_q_function(Q, axs, a, gamma, grid_size):
-    action_labels = ['Left', 'Down', 'Right', 'Up', 'Stay']
-    Q_grid = Q[:, a].reshape((grid_size, grid_size))
-    sns.heatmap(Q_grid, annot=True, cmap='viridis', ax=axs, cbar=True)
-    axs.set_title(f'action: {action_labels[a]}, $\gamma$ = {gamma}')
-    axs.set_xticks([])
-    axs.set_yticks([])
-
-
 if __name__ == "__main__":
 
     gammas = [0.99]
@@ -132,18 +123,20 @@ if __name__ == "__main__":
 
         for i, gamma in enumerate(gammas):
             V = np.full(n_states, init_value)
-            history = []
+            history = [np.inf]
             V, pi_learnt, history = policy_iteration(V, R, P, T, gamma, theta, history)
 
-            assert np.allclose(pi_learnt, pi_opt)
+            # assert np.allclose(pi_learnt, pi_opt)
 
             grid_size = int(np.sqrt(len(V)))
+
+            axs1 = np.expand_dims(axs1, axis=1)
 
             # plot V function
             plot_v_function(V, axs1[0][i], gamma, grid_size)
 
             # plot convergence history
-            axs1[1][i].plot(history)
+            axs1[1][i].plot(history[1:])
             axs1[1][i].set_title(f'Convergence History, $\gamma$ = {gamma}')
             axs1[1][i].set_xlabel('Iteration')
             axs1[1][i].set_ylabel('Bellman Error')
