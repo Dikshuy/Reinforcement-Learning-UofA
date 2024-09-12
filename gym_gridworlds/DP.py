@@ -8,7 +8,7 @@ env.reset()
 
 gammas = [0.01, 0.5, 0.99]
 initial_values = [-10, 0, 10]
-theta = 1e-50
+theta = 1e-5
 max_iterations = 10000
 
 n_states = env.observation_space.n
@@ -30,13 +30,22 @@ for s in range(n_states):
 # print("Transition Matrix (P):\n", P)
 # print("Termination Matrix (T):\n", T)
 
-def evaluate_V_policy(V, pi, R, P, terminal_state,gamma, theta):
+def bellman_updates(V, Q, pi, R, P, terminal_state, gamma, theta):
     history = []
     for _ in range(max_iterations):
         bellman_error = 0
         v = V.copy()
         V = np.sum(pi * (R + gamma * np.matmul(P, V)), axis=1)
-        V[terminal_state] = R[terminal_state, policy[terminal_state].argmax()]
+        # Q = R + gamma * 
+
+
+def evaluate_V_policy(V, pi, R, P, T,gamma, theta):
+    history = []
+    for _ in range(max_iterations):
+        bellman_error = 0
+        v = V.copy()
+        V = np.sum(pi * (R + gamma * np.multiply(np.dot(P, V), 1-T)), axis=1)
+        # V[terminal_state] = R[terminal_state, pi[terminal_state].argmax()]
         bellman_error = np.sum(np.abs(v-V))
         history.append(bellman_error) 
         if bellman_error < theta:
@@ -97,24 +106,24 @@ results = {}
 
 terminal_state = 2
 
-for gamma in gammas:
-    if gamma not in results:
-        results[gamma] = {}
-    for init_value in initial_values:
-        V_initial = np.full(n_states, init_value)
-        Q_initial = np.full((n_states, n_actions), init_value)
+# for gamma in gammas:
+#     if gamma not in results:
+#         results[gamma] = {}
+#     for init_value in initial_values:
+#         V_initial = np.full(n_states, init_value)
+#         Q_initial = np.full((n_states, n_actions), init_value)
 
-        policy = optimal_policy()
+#         policy = optimal_policy()
 
-        V_pi, history_v = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
-        Q_pi, history_q = evaluate_Q_policy(Q_initial, policy, R, P, terminal_state, gamma, theta)
+#         V_pi, history_v = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
+#         Q_pi, history_q = evaluate_Q_policy(Q_initial, policy, R, P, terminal_state, gamma, theta)
 
-        results[gamma][init_value] = {
-            'V_pi': V_pi,
-            'Q_pi': Q_pi,
-            'delta_history_v': history_v,
-            'delta_history_q': history_q
-        }
+#         results[gamma][init_value] = {
+#             'V_pi': V_pi,
+#             'Q_pi': Q_pi,
+#             'delta_history_v': history_v,
+#             'delta_history_q': history_q
+#         }
 
 def plot_heatmap(data, title, ax):
     sns.heatmap(data.reshape(3, 3), annot=True, fmt=".2f", cbar=False, ax=ax)
@@ -127,11 +136,12 @@ def plot_bellman_error(delta_history, title, ax):
     ax.set_ylabel("Bellman Error")
 
 gammas = [0.01, 0.5, 0.99]
+policy = optimal_policy()
 for init_value in [-10, 0, 10]:
     fig, axs = plt.subplots(2, len(gammas))
     fig.suptitle(f"$V_0$: {init_value}")
     for i, gamma in enumerate(gammas):
-        V, delta_history = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
+        V, delta_history = evaluate_V_policy(np.full(n_states, init_value), policy, R, P, terminal_state, gamma, theta)
         grid_size = int(np.sqrt(len(V))) 
         V_grid = V.reshape((grid_size, grid_size))
         
@@ -148,7 +158,7 @@ for init_value in [-10, 0, 10]:
         axs[1][i].set_xlabel('Iteration')
         axs[1][i].set_ylabel('Delta')
 
-    # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
     
     filename = f'plots_v0_{init_value}.png'
     plt.savefig(filename)
@@ -158,7 +168,7 @@ for init_value in [-10, 0, 10]:
     fig.suptitle(f"$Q_0$: {init_value}")
 
     for i, gamma in enumerate(gammas):
-        Q, delta_history = evaluate_Q_policy(Q_initial, policy, R, P, terminal_state, gamma, theta)
+        Q, delta_history = evaluate_Q_policy(np.full((n_states, n_actions), init_value), policy, R, P, terminal_state, gamma, theta)
         # Plot Q-values for each action
         for a in range(n_actions):
             # Reshape Q-values into a 2D grid
@@ -175,7 +185,7 @@ for init_value in [-10, 0, 10]:
         axs[-1, i].set_xlabel('Iteration')
         axs[-1, i].set_ylabel('Delta')
 
-    # plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
     filename = f'plots_q0_{init_value}.png'
     plt.savefig(filename)
