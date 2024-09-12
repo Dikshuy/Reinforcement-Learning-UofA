@@ -35,7 +35,7 @@ def policy_improvement(V, pi, R, P, T, gamma):
     for s in range(n_states):
         old = pi[s].copy()
         greedy_policy(s, V, pi, R, P, T, gamma)
-        if not np.array_equal(pi[s], old):
+        if not np.allclose(pi[s], old):
             policy_stable = False
 
     return pi, policy_stable
@@ -58,14 +58,16 @@ def optimality_update(s, V, R, P, T, gamma):
     return V_s
 
 
-def value_iteration_update(V, R, P, T, gamma, theta, history):
+def value_iteration(V, R, P, T, gamma, theta, history):
     while True:
         delta = 0
-        v = V.copy()
+        v = V.copy()      
         Q = R + gamma * np.multiply(np.dot(P, V), (1 - T))
         V = np.max(Q, axis=1)
+
         delta = max(delta, np.max(np.abs(V - v)))
         history.append(np.max(np.abs(V - v)))
+
         if delta < theta:
             break
 
@@ -79,38 +81,16 @@ def value_iteration_update(V, R, P, T, gamma, theta, history):
     return V, pi, history
 
 
-def value_iteration(V, R, P, T, gamma, theta, history):
-    while True:
-        v = V
-        V, pi, history = value_iteration_update(V, R, P, T, gamma, theta, history)
-
-        if np.max(np.abs(V-v)) < theta:
-            break
-
-    return V, pi, history
-
-
 def generalized_policy_iteration(V, R, P, T, gamma, theta, history, eval_steps=5):
     pi = np.ones((n_states, n_actions)) / n_actions
-    while True:
+    policy_stable = False
+
+    while not policy_stable:
         for _ in range(eval_steps):
-            V, _ = policy_evaluation(V, pi, R, P, T, gamma, theta, history)
-            # history.append(bellman_error)
+            V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
+            history.append(bellman_error)
 
-        new_pi, _ = policy_improvement(V, pi, R, P, T, gamma)
-
-        if np.all(pi == new_pi):
-            # print(pi)
-            # print("------")
-
-            # print(new_pi)
-            # print("------")
-            # print(optimal_policy())
-            # print("-----**********************-")
-
-            break
-
-        pi = new_pi
+        pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
     return V, pi, history
 
@@ -196,26 +176,21 @@ if __name__ == "__main__":
             history_PI = []
             V_PI, pi_learnt_PI, history_PI = policy_iteration(V_PI_init, R, P, T, gamma, theta, history_PI)
 
-            if np.all(pi_learnt_PI == pi_opt):
+            if np.allclose(pi_learnt_PI, pi_opt):
                 print("optimal policy found using policy iteration")
 
             V_VI_init = np.full(n_states, init_value)
             history_VI = []
             V_VI, pi_learnt_VI, history_VI = value_iteration(V_VI_init, R, P, T, gamma, theta, history_VI)
 
-            if np.all(pi_learnt_VI == pi_opt):
+            if np.allclose(pi_learnt_VI, pi_opt):
                 print("optimal policy found using value iteration")
 
             V_GPI_init = np.full(n_states, init_value)
             history_GPI = []
             V_GPI, pi_learnt_GPI, history_GPI = generalized_policy_iteration(V_GPI_init, R, P, T, gamma, theta, history_GPI)
 
-            print(V_GPI)
-            # print("--")
-            # print(pi_learnt_GPI)
-            # print("-------------------")
-
-            if np.all(pi_learnt_GPI == pi_opt):
+            if np.allclose(pi_learnt_GPI, pi_opt):
                 print("optimal policy found using generalized policy iteration")
 
             grid_size = int(np.sqrt(n_states))
@@ -248,7 +223,15 @@ if __name__ == "__main__":
             axs3[1][i].set_ylabel('Bellman Error')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        plt.show()
-        # filename_v = f'plots_v0_{init_value}.png'
-        # plt.savefig(filename_v)
+        # plt.show()
+        # filename_v_1 = f'plots_v0_{init_value}_PI.png'
+        # plt.savefig(filename_v_1)
         # plt.close(fig1)
+
+        # filename_v_2 = f'plots_v0_{init_value}_VI.png'
+        # plt.savefig(filename_v_2)
+        # plt.close(fig2)
+
+        # filename_v_3 = f'plots_v0_{init_value}_GPI.png'
+        # plt.savefig(filename_v_3)
+        # plt.close(fig3)
