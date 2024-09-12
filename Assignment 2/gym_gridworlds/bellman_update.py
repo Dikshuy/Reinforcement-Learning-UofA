@@ -15,9 +15,9 @@ def policy_evaluation(V, Q, pi, R, P, T, gamma, theta):
 
 def bellman_updates(V, Q, pi, R, P, T, gamma):
     v = V.copy()                                    # copying initial policy
-    pi_V = np.multiply(np.dot(P, V), (1-T))         # pi*V and removing the terminal state
-    V = np.sum(pi * (R + gamma * pi_V),axis=1)      # updating state value function
-    Q = R + gamma * pi_V                            # updating state-action value function
+    P_V = np.multiply(np.dot(P, V), (1-T))         # P*V and removing the terminal state
+    V = np.sum(pi * (R + gamma * P_V),axis=1)      # updating state value function
+    Q = R + gamma * P_V                            # updating state-action value function
 
     bellman_error = np.sum(np.abs(V - v))
 
@@ -113,7 +113,7 @@ if __name__ == "__main__":
   
             store_q_values.append(Q)
 
-            grid_size = int(np.sqrt(len(V)))
+            grid_size = int(np.sqrt(n_states))
 
             # plot V function
             plot_v_function(V, axs1[0][i], gamma, grid_size)
