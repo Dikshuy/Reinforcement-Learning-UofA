@@ -4,24 +4,49 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def policy_evaluation(V, Q, pi, R, P, T, gamma, theta):
-    history = []
+def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
     bellman_error = np.inf
     while bellman_error > theta:
-        V, Q, bellman_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+        V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
         history.append(bellman_error)
-    return V, Q, history
+    return V, history
 
 
-def bellman_updates(V, Q, pi, R, P, T, gamma):
+def bellman_updates(V, pi, R, P, T, gamma):
     v = V.copy()                                    # copying initial policy
     pi_V = np.multiply(np.dot(P, V), (1-T))         # pi*V and removing the terminal state
     V = np.sum(pi * (R + gamma * pi_V),axis=1)      # updating state value function
-    Q = R + gamma * pi_V                            # updating state-action value function
 
     bellman_error = np.sum(np.abs(V - v))
 
-    return V, Q, bellman_error
+    return V, bellman_error
+
+
+def policy_improvement(V, pi, R, P, T, gamma):
+    policy_stable = True
+    for s in range(n_states):
+        old = pi[s].copy()
+        greedy_policy(s, V, pi, R, P, T, gamma)
+        if not np.array_equal(pi[s], old):
+            policy_stable = False
+
+    return pi, policy_stable
+
+def greedy_policy(s, V, pi, R, P, T, gamma):
+    Q_s = R[s] + gamma * np.multiply(np.dot(P[s], V), (1-T[s]))
+    best = np.argmax(Q_s)
+    pi[s] = np.eye(n_actions)[best]
+
+
+def policy_iteration(V, R, P, T, gamma, theta, history):
+    pi = np.ones((n_states, n_actions)) / n_actions
+    policy_stable = False
+
+    while not policy_stable:
+        V, history = policy_evaluation(V, pi, R, P, T, gamma, theta, history)
+        pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
+
+    return V, pi, history
 
 
 def optimal_policy():
@@ -70,7 +95,7 @@ def plot_q_function(Q, axs, a, gamma, grid_size):
 
 if __name__ == "__main__":
 
-    gammas = [0.01, 0.5, 0.99]
+    gammas = [0.99]
     initial_values = [-10, 0, 10]
     theta = 1e-10
     max_iterations = 10000
@@ -97,10 +122,9 @@ if __name__ == "__main__":
             P[s, a, s_next] = 1.0
             T[s, a] = terminated
 
-    policy = optimal_policy()
+    pi_opt = optimal_policy()
 
     for init_value in initial_values:
-        store_q_values = []
 
         # plot for V-function and convergence history
         fig1, axs1 = plt.subplots(2, len(gammas), figsize=(15, 10))
@@ -108,10 +132,10 @@ if __name__ == "__main__":
 
         for i, gamma in enumerate(gammas):
             V = np.full(n_states, init_value)
-            Q = np.full((n_states, n_actions), init_value)
-            V, Q, history = policy_evaluation(V, Q, policy, R, P, T, gamma, theta)
-  
-            store_q_values.append(Q)
+            history = []
+            V, pi_learnt, history = policy_iteration(V, R, P, T, gamma, theta, history)
+
+            assert np.allclose(pi_learnt, pi_opt)
 
             grid_size = int(np.sqrt(len(V)))
 
@@ -128,55 +152,3 @@ if __name__ == "__main__":
         filename_v = f'plots_v0_{init_value}.png'
         plt.savefig(filename_v)
         plt.close(fig1)
-
-        # plot for Q-function
-        fig2, axs2 = plt.subplots(n_actions, len(gammas), figsize=(15, 3 * n_actions))
-        fig2.suptitle(f"Action-Value Function $Q_0$: {init_value}")
-
-        for i, gamma in enumerate(gammas):
-            Q = store_q_values[i]
-
-            # plot Q-values for each action
-            for a in range(n_actions):
-                plot_q_function(Q, axs2[a][i], a, gamma, grid_size)
-
-        plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        filename_q = f'plots_q0_{init_value}.png'
-        plt.savefig(filename_q)
-        plt.close(fig2)
-
-
-'''
--- old --
-
------- MAIN UPDATE LOOP ------
-
-def evaluate_V_policy(V, pi, R, P, T,gamma, theta):
-    history = []
-    for _ in range(max_iterations):
-        bellman_error = 0
-        v = V.copy()
-        V = np.sum(pi * (R + gamma * np.multiply(np.dot(P, V), (1-T))), axis=1)
-        bellman_error = np.sum(np.abs(v-V))
-        history.append(bellman_error) 
-        if bellman_error < theta:
-            break  
-    return V, history
-
-results = {}
-
-for gamma in gammas:
-    if gamma not in results:
-        results[gamma] = {}
-    for init_value in initial_values:
-        V_initial = np.full(n_states, init_value)
-
-        policy = optimal_policy()
-
-        V_pi, history = evaluate_V_policy(V_initial, policy, R, P, terminal_state, gamma, theta)
-
-        results[gamma][init_value] = {
-            'V_pi': V_pi,
-            'delta_history': history,
-        }
-'''
