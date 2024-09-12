@@ -5,23 +5,26 @@ import seaborn as sns
 
 
 def policy_evaluation(V, Q, pi, R, P, T, gamma, theta):
-    history = []
+    history_V, history_Q = [], []
     bellman_error = np.inf
     while bellman_error > theta:
-        V, Q, bellman_error = bellman_updates(V, Q, pi, R, P, T, gamma)
-        history.append(bellman_error)
-    return V, Q, history
+        V, Q, bellman_error, q_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+        history_V.append(bellman_error)
+        history_Q.append(q_error)
+    return V, Q, history_V, history_Q
 
 
 def bellman_updates(V, Q, pi, R, P, T, gamma):
-    v = V.copy()                                    # copying initial policy
+    v = V.copy()                                   # copying initial state value function
+    q = Q.copy()                                   # copying initial state action value function
     P_V = np.multiply(np.dot(P, V), (1-T))         # P*V and removing the terminal state
     V = np.sum(pi * (R + gamma * P_V),axis=1)      # updating state value function
     Q = R + gamma * P_V                            # updating state-action value function
 
     bellman_error = np.sum(np.abs(V - v))
+    q_error = np.sum(np.abs(Q - q))
 
-    return V, Q, bellman_error
+    return V, Q, bellman_error, q_error
 
 
 def optimal_policy():
@@ -109,7 +112,7 @@ if __name__ == "__main__":
         for i, gamma in enumerate(gammas):
             V = np.full(n_states, init_value)
             Q = np.full((n_states, n_actions), init_value)
-            V, Q, history = policy_evaluation(V, Q, policy, R, P, T, gamma, theta)
+            V, Q, history_V, history_Q = policy_evaluation(V, Q, policy, R, P, T, gamma, theta)
   
             store_q_values.append(Q)
 
@@ -119,7 +122,7 @@ if __name__ == "__main__":
             plot_v_function(V, axs1[0][i], gamma, grid_size)
 
             # plot convergence history
-            axs1[1][i].plot(history)
+            axs1[1][i].plot(history_V)
             axs1[1][i].set_title(f'Convergence History, $\gamma$ = {gamma}')
             axs1[1][i].set_xlabel('Iteration')
             axs1[1][i].set_ylabel('Bellman Error')
@@ -144,6 +147,15 @@ if __name__ == "__main__":
         filename_q = f'plots_q0_{init_value}.png'
         plt.savefig(filename_q)
         plt.close(fig2)
+
+        # plot for Q-value errors
+        fig3, axs3 = plt.subplots(n_actions, len(gammas), figsize=(15, 3 * n_actions))
+
+        '''
+        
+        -------------- PENDING --------------
+        
+        '''
 
 
 '''
