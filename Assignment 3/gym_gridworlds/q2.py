@@ -4,23 +4,26 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def bellman_updates(V, pi, R, P, T, gamma):
-    v = V.copy()                                    # copying initial policy
-    P_V = np.multiply(np.dot(P, V), (1-T))          # pi*V and removing the terminal state
-    V = np.sum(pi * (R + gamma * P_V), axis=1)      # updating state value function
+def bellman_updates(V, Q, pi, R, P, T, gamma):
+    v = V.copy()                                   # copying initial state value function
+    q = Q.copy()                                   # copying initial state action value function
+    P_V = np.multiply(np.dot(P, V), (1-T))         # P*V and removing the terminal state
+    V = np.sum(pi * (R + gamma * P_V),axis=1)      # updating state value function
+    Q = R + gamma * P_V                            # updating state-action value function
 
-    bellman_error = np.sum(np.abs(V - v))
+    V_error = np.sum(np.abs(V - v))
+    Q_error = np.sum(np.abs(Q - q))
 
-    return V, bellman_error
+    return V, Q, V_error, Q_error
 
 
-def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
-    bellman_error = np.inf
-    while bellman_error > theta:
-        V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
-        history.append(bellman_error)
+def policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history):
+    Q_error = np.inf
+    while Q_error > theta:
+        V, Q, V_error, Q_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+        history.append(Q_error)
 
-    return V, history
+    return V, Q, history
 
 
 def greedy_policy(V, R, P, T, gamma):
@@ -42,15 +45,15 @@ def policy_improvement(V, pi, R, P, T, gamma):
     return pi, policy_stable
 
 
-def policy_iteration(V, R, P, T, gamma, theta, history):
+def policy_iteration(V, Q, R, P, T, gamma, theta, history):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
-        V, history = policy_evaluation(V, pi, R, P, T, gamma, theta, history)
+        V, Q, history = policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history)
         pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
-    return V, pi, history
+    return V, Q, pi, history
 
 
 def optimality_update(s, V, R, P, T, gamma):
@@ -59,15 +62,16 @@ def optimality_update(s, V, R, P, T, gamma):
     return V_s
 
 
-def value_iteration(V, R, P, T, gamma, theta, history):
+def value_iteration(V, Q, R, P, T, gamma, theta, history):
     while True:
         delta = 0
-        v = V.copy()      
+        v = V.copy()
+        q = Q.copy()      
         Q = R + gamma * np.multiply(np.dot(P, V), (1 - T))
         V = np.max(Q, axis=1)
 
-        delta = max(delta, np.max(np.abs(V - v)))
-        history.append(np.max(np.abs(V - v)))
+        delta = max(delta, np.max(np.abs(Q - q)))
+        history.append(np.max(np.abs(Q - q)))
 
         if delta < theta:
             break
@@ -79,21 +83,21 @@ def value_iteration(V, R, P, T, gamma, theta, history):
         best = np.argmax(V_s)
         pi[s] = np.eye(n_actions)[best]
 
-    return V, pi, history
+    return V, Q, pi, history
 
 
-def generalized_policy_iteration(V, R, P, T, gamma, theta, history, eval_steps=5):
+def generalized_policy_iteration(V, Q, R, P, T, gamma, theta, history, eval_steps=5):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
         for _ in range(eval_steps):
-            V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
-            history.append(bellman_error)
+            V, Q, V_error, Q_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+            history.append(Q_error)
 
         pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
-    return V, pi, history
+    return V, Q, pi, history
 
 
 def optimal_policy():
@@ -123,9 +127,9 @@ def optimal_policy():
     return policy
 
 
-def plot_v_function(V, axs, gamma, grid_size):
-    V_grid = V.reshape((grid_size, grid_size))
-    sns.heatmap(V_grid, annot=True, cmap='viridis', ax=axs, cbar=True)
+def plot_Q_function(Q, axs, gamma, grid_size):
+    Q_grid = np.max(Q, axis=1).reshape((grid_size, grid_size))
+    sns.heatmap(Q_grid, annot=True, cmap='viridis', ax=axs, cbar=True)
     axs.set_title(f'$\gamma$ = {gamma}')
     axs.set_xticks([])
     axs.set_yticks([])
@@ -168,28 +172,31 @@ if __name__ == "__main__":
         fig1, axs1 = plt.subplots(2, len(gammas), figsize=(15, 10))
         fig2, axs2 = plt.subplots(2, len(gammas), figsize=(15, 10))
         fig3, axs3 = plt.subplots(2, len(gammas), figsize=(15, 10))
-        fig1.suptitle(f"State-Value Function $V_0$: {init_value}")
-        fig2.suptitle(f"State-Value Function $V_0$: {init_value}")
-        fig3.suptitle(f"State-Value Function $V_0$: {init_value}")
+        fig1.suptitle(f"State-Action Value Function $V_0$: {init_value}")
+        fig2.suptitle(f"State-Action Value Function $V_0$: {init_value}")
+        fig3.suptitle(f"State-Action Value Function $V_0$: {init_value}")
 
         for i, gamma in enumerate(gammas):
             V_PI_init = np.full(n_states, init_value)
+            Q_PI_init = np.full((n_states, n_actions), init_value)
             history_PI = []
-            V_PI, pi_learnt_PI, history_PI = policy_iteration(V_PI_init, R, P, T, gamma, theta, history_PI)
+            V_PI, Q_PI, pi_learnt_PI, history_PI = policy_iteration(V_PI_init, Q_PI_init, R, P, T, gamma, theta, history_PI)
 
             if np.allclose(pi_learnt_PI, pi_opt):
                 print("optimal policy found using policy iteration")
 
             V_VI_init = np.full(n_states, init_value)
+            Q_VI_init = np.full((n_states, n_actions), init_value)
             history_VI = []
-            V_VI, pi_learnt_VI, history_VI = value_iteration(V_VI_init, R, P, T, gamma, theta, history_VI)
+            V_VI, Q_VI, pi_learnt_VI, history_VI = value_iteration(V_VI_init, Q_VI_init, R, P, T, gamma, theta, history_VI)
 
             if np.allclose(pi_learnt_VI, pi_opt):
                 print("optimal policy found using value iteration")
 
             V_GPI_init = np.full(n_states, init_value)
+            Q_GPI_init = np.full((n_states, n_actions), init_value)
             history_GPI = []
-            V_GPI, pi_learnt_GPI, history_GPI = generalized_policy_iteration(V_GPI_init, R, P, T, gamma, theta, history_GPI)
+            V_GPI, Q_GPI, pi_learnt_GPI, history_GPI = generalized_policy_iteration(V_GPI_init, Q_GPI_init, R, P, T, gamma, theta, history_GPI)
 
             if np.allclose(pi_learnt_GPI, pi_opt):
                 print("optimal policy found using generalized policy iteration")
@@ -201,9 +208,9 @@ if __name__ == "__main__":
             axs3 = np.expand_dims(axs3, axis=1)
 
             # plot V function
-            plot_v_function(V_PI, axs1[0][i], gamma, grid_size)
-            plot_v_function(V_VI, axs2[0][i], gamma, grid_size)
-            plot_v_function(V_GPI, axs3[0][i], gamma, grid_size)
+            plot_Q_function(Q_PI, axs1[0][i], gamma, grid_size)
+            plot_Q_function(Q_VI, axs2[0][i], gamma, grid_size)
+            plot_Q_function(Q_GPI, axs3[0][i], gamma, grid_size)
 
             # plot convergence history
             axs1[1][i].plot(history_PI)
@@ -225,9 +232,9 @@ if __name__ == "__main__":
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         # plt.show()
-        fig1.savefig(f"V_policy_iteration_V0_{init_value}.png")
-        fig2.savefig(f"V_value_iteration_V0_{init_value}.png")
-        fig3.savefig(f"V_generalized_policy_iteration_V0_{init_value}.png")
+        fig1.savefig(f"Q_policy_iteration_V0_{init_value}.png")
+        fig2.savefig(f"Q_value_iteration_V0_{init_value}.png")
+        fig3.savefig(f"Q_generalized_policy_iteration_V0_{init_value}.png")
 
         plt.close(fig1)
         plt.close(fig2)
