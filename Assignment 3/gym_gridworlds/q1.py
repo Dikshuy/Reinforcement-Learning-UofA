@@ -15,28 +15,29 @@ def bellman_updates(V, pi, R, P, T, gamma):
 
 
 def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
-    bellman_error = 0
-    while True:
+    bellman_error = np.inf
+    while bellman_error > theta:
         V, bellman_error = bellman_updates(V, pi, R, P, T, gamma)
         history.append(bellman_error)
-        if bellman_error < theta:
-            break
+
     return V, history
 
 
-def greedy_policy(s, V, pi, R, P, T, gamma):
-    Q_s = R[s] + gamma * np.multiply(np.dot(P[s], V), (1-T[s]))
-    best = np.argmax(Q_s)
-    pi[s] = np.eye(n_actions)[best]
+def greedy_policy(V, R, P, T, gamma):
+    Q = R + gamma * np.multiply(np.dot(P, V), (1-T))
+    best = np.argmax(Q, axis=1)
+    pi = np.eye(n_actions)[best]
+    
+    return pi
 
 
 def policy_improvement(V, pi, R, P, T, gamma):
     policy_stable = True
-    for s in range(n_states):
-        old = pi[s].copy()
-        greedy_policy(s, V, pi, R, P, T, gamma)
-        if not np.allclose(pi[s], old):
-            policy_stable = False
+    old = pi.copy()
+    pi = greedy_policy(V, R, P, T, gamma)
+    
+    if not np.allclose(pi, old):
+        policy_stable = False
 
     return pi, policy_stable
 
@@ -223,6 +224,7 @@ if __name__ == "__main__":
             axs3[1][i].set_ylabel('Bellman Error')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+        # plt.show()
         fig1.savefig(f"policy_iteration_V0_{init_value}.png")
         fig2.savefig(f"value_iteration_V0_{init_value}.png")
         fig3.savefig(f"generalized_policy_iteration_V0_{init_value}.png")
