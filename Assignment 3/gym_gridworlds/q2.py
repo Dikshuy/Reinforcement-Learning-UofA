@@ -28,8 +28,12 @@ def policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history):
 
 def greedy_policy(V, R, P, T, gamma):
     Q = R + gamma * np.multiply(np.dot(P, V), (1-T))
-    best = np.argmax(Q, axis=1)
-    pi = np.eye(n_actions)[best]
+    pi = np.zeros((len(V), n_actions))
+
+    for s in range(len(V)):
+        max_actions = np.flatnonzero(Q[s] == np.max(Q[s]))
+        best_action = np.random.choice(max_actions)
+        pi[s, best_action] = 1
     
     return pi
 

@@ -29,8 +29,12 @@ def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
 
 def greedy_policy(V, R, P, T, gamma):
     Q = R + gamma * np.multiply(np.dot(P, V), (1-T))
-    best = np.argmax(Q, axis=1)
-    pi = np.eye(n_actions)[best]
+    pi = np.zeros((len(V), n_actions))
+
+    for s in range(len(V)):
+        max_actions = np.flatnonzero(Q[s] == np.max(Q[s]))
+        best_action = np.random.choice(max_actions)
+        pi[s, best_action] = 1
     
     return pi
 
@@ -222,10 +226,8 @@ if __name__ == "__main__":
             V_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(V_GPI_init, R, P, T, gamma, theta, history_GPI)
             evaluations_GPI.append(num_evaluations_GPI)
 
-            # print(pi_learnt_GPI)
-            if np.allclose(pi_learnt_GPI, pi_opt):
-                print(init_value)
-                print("optimal policy found using generalized policy iteration")
+            # if np.allclose(pi_learnt_GPI, pi_opt):
+            #     print("optimal policy found using generalized policy iteration")
 
             assert np.allclose(pi_learnt_GPI, pi_opt)
 
