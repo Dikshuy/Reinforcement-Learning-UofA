@@ -182,16 +182,20 @@ if __name__ == "__main__":
             history_PI = []
             V_PI, Q_PI, pi_learnt_PI, history_PI = policy_iteration(V_PI_init, Q_PI_init, R, P, T, gamma, theta, history_PI)
 
-            if np.allclose(pi_learnt_PI, pi_opt):
-                print("optimal policy found using policy iteration")
+            # if np.allclose(pi_learnt_PI, pi_opt):
+            #     print("optimal policy found using policy iteration")
+
+            assert np.allclose(pi_learnt_PI, pi_opt)
 
             V_VI_init = np.full(n_states, init_value)
             Q_VI_init = np.full((n_states, n_actions), init_value)
             history_VI = []
             V_VI, Q_VI, pi_learnt_VI, history_VI = value_iteration(V_VI_init, Q_VI_init, R, P, T, gamma, theta, history_VI)
 
-            if np.allclose(pi_learnt_VI, pi_opt):
-                print("optimal policy found using value iteration")
+            # if np.allclose(pi_learnt_VI, pi_opt):
+            #     print("optimal policy found using value iteration")
+
+            np.allclose(pi_learnt_VI, pi_opt)
 
             V_GPI_init = np.full(n_states, init_value)
             Q_GPI_init = np.full((n_states, n_actions), init_value)
@@ -199,7 +203,10 @@ if __name__ == "__main__":
             V_GPI, Q_GPI, pi_learnt_GPI, history_GPI = generalized_policy_iteration(V_GPI_init, Q_GPI_init, R, P, T, gamma, theta, history_GPI)
 
             if np.allclose(pi_learnt_GPI, pi_opt):
+                print(init_value)
                 print("optimal policy found using generalized policy iteration")
+
+            assert np.allclose(pi_learnt_GPI, pi_opt)
 
             grid_size = int(np.sqrt(n_states))
 
