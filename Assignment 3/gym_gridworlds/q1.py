@@ -133,7 +133,7 @@ def plot_v_function(V, axs, gamma, grid_size):
 if __name__ == "__main__":
 
     gammas = [0.99]
-    initial_values = [-10, 0, 10]
+    initial_values = [-100, -10, -5, 0, 5, 10, 100]
     theta = 1e-10
     max_iterations = 10000
 
@@ -223,15 +223,10 @@ if __name__ == "__main__":
             axs3[1][i].set_ylabel('Bellman Error')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-        # plt.show()
-        # filename_v_1 = f'plots_v0_{init_value}_PI.png'
-        # plt.savefig(filename_v_1)
-        # plt.close(fig1)
+        fig1.savefig(f"policy_iteration_V0_{init_value}.png")
+        fig2.savefig(f"value_iteration_V0_{init_value}.png")
+        fig3.savefig(f"generalized_policy_iteration_V0_{init_value}.png")
 
-        # filename_v_2 = f'plots_v0_{init_value}_VI.png'
-        # plt.savefig(filename_v_2)
-        # plt.close(fig2)
-
-        # filename_v_3 = f'plots_v0_{init_value}_GPI.png'
-        # plt.savefig(filename_v_3)
-        # plt.close(fig3)
+        plt.close(fig1)
+        plt.close(fig2)
+        plt.close(fig3)
