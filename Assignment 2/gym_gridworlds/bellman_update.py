@@ -122,10 +122,12 @@ if __name__ == "__main__":
             plot_v_function(V, axs1[0][i], gamma, grid_size)
 
             # plot convergence history
-            axs1[1][i].plot(history_V)
+            axs1[1][i].plot(history_V, label='V-Error')
+            axs1[1][i].plot(history_Q, label='Q-Error')
             axs1[1][i].set_title(f'Convergence History, $\gamma$ = {gamma}')
             axs1[1][i].set_xlabel('Iteration')
             axs1[1][i].set_ylabel('Bellman Error')
+            axs1[1][i].legend()
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         filename_v = f'plots_v0_{init_value}.png'
@@ -147,16 +149,6 @@ if __name__ == "__main__":
         filename_q = f'plots_q0_{init_value}.png'
         plt.savefig(filename_q)
         plt.close(fig2)
-
-        # plot for Q-value errors
-        fig3, axs3 = plt.subplots(n_actions, len(gammas), figsize=(15, 3 * n_actions))
-
-        '''
-        
-        -------------- PENDING --------------
-        
-        '''
-
 
 '''
 -- old --
