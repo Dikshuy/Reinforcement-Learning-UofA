@@ -17,9 +17,8 @@ def bellman_updates(V, pi, R, P, T, gamma, num_evaluations):
     return V, bellman_error, num_evaluations
 
 
-def policy_evaluation(V, pi, R, P, T, gamma, theta, history):
+def policy_evaluation(V, pi, R, P, T, gamma, theta, history, num_evaluations):
     bellman_error = np.inf
-    num_evaluations = 0
     while bellman_error > theta:
         V, bellman_error, num_evaluations = bellman_updates(V, pi, R, P, T, gamma, num_evaluations)
         history.append(bellman_error)
@@ -50,12 +49,12 @@ def policy_improvement(V, pi, R, P, T, gamma):
     return pi, policy_stable
 
 
-def policy_iteration(V, R, P, T, gamma, theta, history):
+def policy_iteration(V, R, P, T, gamma, theta, history, num_evaluations):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
-        V, history, num_evaluations = policy_evaluation(V, pi, R, P, T, gamma, theta, history)
+        V, history, num_evaluations = policy_evaluation(V, pi, R, P, T, gamma, theta, history, num_evaluations)
         pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
     return V, pi, history, num_evaluations
@@ -67,8 +66,7 @@ def optimality_update(s, V, R, P, T, gamma):
     return V_s
 
 
-def value_iteration(V, R, P, T, gamma, theta, history):
-    num_evaluations = 0
+def value_iteration(V, R, P, T, gamma, theta, history, num_evaluations):
     while True:
         delta = 0
         v = V.copy()      
@@ -93,8 +91,7 @@ def value_iteration(V, R, P, T, gamma, theta, history):
     return V, pi, history, num_evaluations
 
 
-def generalized_policy_iteration(V, R, P, T, gamma, theta, history, eval_steps=5):
-    num_evaluations = 0
+def generalized_policy_iteration(V, R, P, T, gamma, theta, history, num_evaluations, eval_steps=5):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
@@ -152,14 +149,14 @@ def save_data(evals_PI, evals_VI, evals_GPI):
 
     df = pd.DataFrame(data)
     
-    df.to_csv('evaluation_summary.csv', index=False)
+    df.to_csv('V_evaluation_summary.csv', index=False)
 
 
 if __name__ == "__main__":
 
     gammas = [0.99]
     initial_values = [-100, -10, -5, 0, 5, 10, 100]
-    theta = 1e-5
+    theta = 1e-10
     max_iterations = 10000
 
     env = gymnasium.make("Gym-Gridworlds/Penalty-3x3-v0")
@@ -203,7 +200,8 @@ if __name__ == "__main__":
         for i, gamma in enumerate(gammas):
             V_PI_init = np.full(n_states, init_value)
             history_PI = []
-            V_PI, pi_learnt_PI, history_PI, num_evaluations_PI = policy_iteration(V_PI_init, R, P, T, gamma, theta, history_PI)
+            num_evaluations_PI = 0
+            V_PI, pi_learnt_PI, history_PI, num_evaluations_PI = policy_iteration(V_PI_init, R, P, T, gamma, theta, history_PI, num_evaluations_PI)
             evaluations_PI.append(num_evaluations_PI)
 
             # if np.allclose(pi_learnt_PI, pi_opt):
@@ -213,7 +211,8 @@ if __name__ == "__main__":
 
             V_VI_init = np.full(n_states, init_value)
             history_VI = []
-            V_VI, pi_learnt_VI, history_VI, num_evaluations_VI = value_iteration(V_VI_init, R, P, T, gamma, theta, history_VI)
+            num_evaluations_VI = 0
+            V_VI, pi_learnt_VI, history_VI, num_evaluations_VI = value_iteration(V_VI_init, R, P, T, gamma, theta, history_VI, num_evaluations_VI)
             evaluations_VI.append(num_evaluations_VI)
 
             # if np.allclose(pi_learnt_VI, pi_opt):
@@ -223,7 +222,8 @@ if __name__ == "__main__":
 
             V_GPI_init = np.full(n_states, init_value)
             history_GPI = []
-            V_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(V_GPI_init, R, P, T, gamma, theta, history_GPI)
+            num_evaluations_GPI = 0
+            V_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(V_GPI_init, R, P, T, gamma, theta, history_GPI, num_evaluations_GPI)
             evaluations_GPI.append(num_evaluations_GPI)
 
             # if np.allclose(pi_learnt_GPI, pi_opt):

@@ -2,9 +2,9 @@ import gymnasium
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
 
-
-def bellman_updates(V, Q, pi, R, P, T, gamma):
+def bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations):
     v = V.copy()                                   # copying initial state value function
     q = Q.copy()                                   # copying initial state action value function
     P_V = np.multiply(np.dot(P, V), (1-T))         # P*V and removing the terminal state
@@ -14,16 +14,18 @@ def bellman_updates(V, Q, pi, R, P, T, gamma):
     V_error = np.sum(np.abs(V - v))
     Q_error = np.sum(np.abs(Q - q))
 
-    return V, Q, V_error, Q_error
+    num_evaluations += 1
+
+    return V, Q, V_error, Q_error, num_evaluations
 
 
-def policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history):
+def policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history, num_evaluations):
     Q_error = np.inf
     while Q_error > theta:
-        V, Q, V_error, Q_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+        V, Q, V_error, Q_error, num_evaluations = bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations)
         history.append(Q_error)
 
-    return V, Q, history
+    return V, Q, history, num_evaluations
 
 
 def greedy_policy(V, R, P, T, gamma):
@@ -49,15 +51,15 @@ def policy_improvement(V, pi, R, P, T, gamma):
     return pi, policy_stable
 
 
-def policy_iteration(V, Q, R, P, T, gamma, theta, history):
+def policy_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
-        V, Q, history = policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history)
+        V, Q, history, num_evaluations = policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history, num_evaluations)
         pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
-    return V, Q, pi, history
+    return V, Q, pi, history, num_evaluations
 
 
 def optimality_update(s, V, R, P, T, gamma):
@@ -66,7 +68,7 @@ def optimality_update(s, V, R, P, T, gamma):
     return V_s
 
 
-def value_iteration(V, Q, R, P, T, gamma, theta, history):
+def value_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations):
     while True:
         delta = 0
         v = V.copy()
@@ -76,6 +78,8 @@ def value_iteration(V, Q, R, P, T, gamma, theta, history):
 
         delta = max(delta, np.max(np.abs(Q - q)))
         history.append(np.max(np.abs(Q - q)))
+
+        num_evaluations += 1
 
         if delta < theta:
             break
@@ -87,21 +91,21 @@ def value_iteration(V, Q, R, P, T, gamma, theta, history):
         best = np.argmax(V_s)
         pi[s] = np.eye(n_actions)[best]
 
-    return V, Q, pi, history
+    return V, Q, pi, history, num_evaluations
 
 
-def generalized_policy_iteration(V, Q, R, P, T, gamma, theta, history, eval_steps=5):
+def generalized_policy_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations, eval_steps=5):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
         for _ in range(eval_steps):
-            V, Q, V_error, Q_error = bellman_updates(V, Q, pi, R, P, T, gamma)
+            V, Q, V_error, Q_error, num_evaluations = bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations)
             history.append(Q_error)
 
         pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
 
-    return V, Q, pi, history
+    return V, Q, pi, history, num_evaluations
 
 
 def optimal_policy():
@@ -139,6 +143,18 @@ def plot_Q_function(Q, axs, gamma, grid_size):
     axs.set_yticks([])
 
 
+def save_data(evals_PI, evals_VI, evals_GPI):
+    data = {
+        "Algorithm": ["Policy Iteration", "Value Iteration", "Generalized Policy Iteration"],
+        "Mean Evaluations": [np.mean(evals_PI), np.mean(evals_VI), np.mean(evals_GPI)],
+        "Std Evaluations": [np.std(evals_PI), np.std(evals_VI), np.std(evals_GPI)]
+    }
+
+    df = pd.DataFrame(data)
+    
+    df.to_csv('Q_evaluation_summary.csv', index=False)
+
+
 if __name__ == "__main__":
 
     gammas = [0.99]
@@ -170,6 +186,10 @@ if __name__ == "__main__":
 
     pi_opt = optimal_policy()
 
+    evaluations_PI = []
+    evaluations_VI = []
+    evaluations_GPI = []
+
     for init_value in initial_values:
 
         # plot for V-function and convergence history
@@ -184,7 +204,9 @@ if __name__ == "__main__":
             V_PI_init = np.full(n_states, init_value)
             Q_PI_init = np.full((n_states, n_actions), init_value)
             history_PI = []
-            V_PI, Q_PI, pi_learnt_PI, history_PI = policy_iteration(V_PI_init, Q_PI_init, R, P, T, gamma, theta, history_PI)
+            num_evaluations_PI = 0
+            V_PI, Q_PI, pi_learnt_PI, history_PI, num_evaluations_PI = policy_iteration(V_PI_init, Q_PI_init, R, P, T, gamma, theta, history_PI, num_evaluations_PI)
+            evaluations_PI.append(num_evaluations_PI)
 
             # if np.allclose(pi_learnt_PI, pi_opt):
             #     print("optimal policy found using policy iteration")
@@ -194,8 +216,10 @@ if __name__ == "__main__":
             V_VI_init = np.full(n_states, init_value)
             Q_VI_init = np.full((n_states, n_actions), init_value)
             history_VI = []
-            V_VI, Q_VI, pi_learnt_VI, history_VI = value_iteration(V_VI_init, Q_VI_init, R, P, T, gamma, theta, history_VI)
-
+            num_evaluations_VI = 0
+            V_VI, Q_VI, pi_learnt_VI, history_VI, num_evaluations_VI = value_iteration(V_VI_init, Q_VI_init, R, P, T, gamma, theta, history_VI, num_evaluations_VI)
+            evaluations_VI.append(num_evaluations_VI)
+            
             # if np.allclose(pi_learnt_VI, pi_opt):
             #     print("optimal policy found using value iteration")
 
@@ -204,11 +228,12 @@ if __name__ == "__main__":
             V_GPI_init = np.full(n_states, init_value)
             Q_GPI_init = np.full((n_states, n_actions), init_value)
             history_GPI = []
-            V_GPI, Q_GPI, pi_learnt_GPI, history_GPI = generalized_policy_iteration(V_GPI_init, Q_GPI_init, R, P, T, gamma, theta, history_GPI)
+            num_evaluations_GPI = 0
+            V_GPI, Q_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(V_GPI_init, Q_GPI_init, R, P, T, gamma, theta, history_GPI, num_evaluations_GPI)
+            evaluations_GPI.append(num_evaluations_GPI)
 
-            if np.allclose(pi_learnt_GPI, pi_opt):
-                print(init_value)
-                print("optimal policy found using generalized policy iteration")
+            # if np.allclose(pi_learnt_GPI, pi_opt):
+            #     print("optimal policy found using generalized policy iteration")
 
             assert np.allclose(pi_learnt_GPI, pi_opt)
 
@@ -250,3 +275,6 @@ if __name__ == "__main__":
         plt.close(fig1)
         plt.close(fig2)
         plt.close(fig3)
+
+    save_data(evaluations_PI, evaluations_VI, evaluations_GPI)
+    print(evaluations_PI, evaluations_VI, evaluations_GPI)
