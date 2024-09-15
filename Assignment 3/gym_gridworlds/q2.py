@@ -4,46 +4,39 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-def bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations):
-    v = V.copy()                                   # copying initial state value function
-    q = Q.copy()                                   # copying initial state action value function
-    P_V = np.multiply(np.dot(P, V), (1-T))         # P*V and removing the terminal state
-    V = np.sum(pi * (R + gamma * P_V),axis=1)      # updating state value function
-    Q = R + gamma * P_V                            # updating state-action value function
+def bellman_updates(Q, pi, R, P, T, gamma, num_evaluations):
+    q = Q.copy()                                    # copying initial state action value function
+    P_Q = np.dot(P, np.multiply(pi, Q).sum(-1))     # P*pi*Q 
+    Q = R + gamma * np.multiply(P_Q, (1-T))         # updating state-action value function
 
-    V_error = np.sum(np.abs(V - v))
     Q_error = np.sum(np.abs(Q - q))
 
     num_evaluations += 1
 
-    return V, Q, V_error, Q_error, num_evaluations
+    return Q, Q_error, num_evaluations
 
 
-def policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history, num_evaluations):
+def policy_evaluation(Q, pi, R, P, T, gamma, theta, history, num_evaluations):
     Q_error = np.inf
     while Q_error > theta:
-        V, Q, V_error, Q_error, num_evaluations = bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations)
+        Q, Q_error, num_evaluations = bellman_updates(Q, pi, R, P, T, gamma, num_evaluations)
         history.append(Q_error)
 
-    return V, Q, history, num_evaluations
+    return Q, history, num_evaluations
 
 
-def greedy_policy(V, R, P, T, gamma):
-    Q = R + gamma * np.multiply(np.dot(P, V), (1-T))
-    pi = np.zeros((len(V), n_actions))
-
-    for s in range(len(V)):
-        max_actions = np.flatnonzero(Q[s] == np.max(Q[s]))
-        best_action = np.random.choice(max_actions)
-        pi[s, best_action] = 1
-    
-    return pi
-
-
-def policy_improvement(V, pi, R, P, T, gamma):
+def policy_improvement(Q, pi, R, P, T, gamma):
     policy_stable = True
     old = pi.copy()
-    pi = greedy_policy(V, R, P, T, gamma)
+
+    max_Q = np.max(Q, axis=-1)
+
+    pi = np.zeros((n_states, n_actions))
+    
+    for s in range(n_states):
+        best_actions = np.where(Q[s] == max_Q[s])[0]
+        chosen_action = np.random.choice(best_actions)
+        pi[s, chosen_action] = 1
     
     if not np.allclose(pi, old):
         policy_stable = False
@@ -51,30 +44,23 @@ def policy_improvement(V, pi, R, P, T, gamma):
     return pi, policy_stable
 
 
-def policy_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations):
+def policy_iteration(Q, R, P, T, gamma, theta, history, num_evaluations):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
-        V, Q, history, num_evaluations = policy_evaluation(V, Q, pi, R, P, T, gamma, theta, history, num_evaluations)
-        pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
+        Q, history, num_evaluations = policy_evaluation(Q, pi, R, P, T, gamma, theta, history, num_evaluations)
+        pi, policy_stable = policy_improvement(Q, pi, R, P, T, gamma)
 
-    return V, Q, pi, history, num_evaluations
-
-
-def optimality_update(s, V, R, P, T, gamma):
-    P_V = np.multiply(np.dot(P[s], V), (1-T[s]))
-    V_s = R[s] + gamma * P_V
-    return V_s
+    return Q, pi, history, num_evaluations
 
 
-def value_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations):
+def value_iteration(Q, R, P, T, gamma, theta, history, num_evaluations):
     while True:
         delta = 0
-        v = V.copy()
-        q = Q.copy()      
-        Q = R + gamma * np.multiply(np.dot(P, V), (1 - T))
-        V = np.max(Q, axis=1)
+        q = Q.copy() 
+        P_Q = np.max(np.dot(P, Q), -1)  
+        Q = R + gamma * np.multiply(P_Q, (1 - T))
 
         delta = max(delta, np.max(np.abs(Q - q)))
         history.append(np.max(np.abs(Q - q)))
@@ -84,28 +70,26 @@ def value_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations):
         if delta < theta:
             break
 
-    pi = np.ones((n_states, n_actions)) / n_actions
+    optimal_actions = np.argmax(Q, -1)
 
-    for s in range(n_states):
-        V_s = optimality_update(s, V, R, P, T, gamma)
-        best = np.argmax(V_s)
-        pi[s] = np.eye(n_actions)[best]
+    pi = np.zeros((n_states, n_actions))
+    pi[np.arange(n_states), optimal_actions] = 1
 
-    return V, Q, pi, history, num_evaluations
+    return Q, pi, history, num_evaluations
 
 
-def generalized_policy_iteration(V, Q, R, P, T, gamma, theta, history, num_evaluations, eval_steps=5):
+def generalized_policy_iteration(Q, R, P, T, gamma, theta, history, num_evaluations, eval_steps=5):
     pi = np.ones((n_states, n_actions)) / n_actions
     policy_stable = False
 
     while not policy_stable:
         for _ in range(eval_steps):
-            V, Q, V_error, Q_error, num_evaluations = bellman_updates(V, Q, pi, R, P, T, gamma, num_evaluations)
+            Q, Q_error, num_evaluations = bellman_updates(Q, pi, R, P, T, gamma, num_evaluations)
             history.append(Q_error)
 
-        pi, policy_stable = policy_improvement(V, pi, R, P, T, gamma)
+        pi, policy_stable = policy_improvement(Q, pi, R, P, T, gamma)
 
-    return V, Q, pi, history, num_evaluations
+    return Q, pi, history, num_evaluations
 
 
 def optimal_policy():
@@ -201,23 +185,20 @@ if __name__ == "__main__":
         fig3.suptitle(f"State-Action Value Function $V_0$: {init_value}")
 
         for i, gamma in enumerate(gammas):
-            V_PI_init = np.full(n_states, init_value)
             Q_PI_init = np.full((n_states, n_actions), init_value)
             history_PI = []
             num_evaluations_PI = 0
-            V_PI, Q_PI, pi_learnt_PI, history_PI, num_evaluations_PI = policy_iteration(V_PI_init, Q_PI_init, R, P, T, gamma, theta, history_PI, num_evaluations_PI)
+            Q_PI, pi_learnt_PI, history_PI, num_evaluations_PI = policy_iteration(Q_PI_init, R, P, T, gamma, theta, history_PI, num_evaluations_PI)
             evaluations_PI.append(num_evaluations_PI)
 
             # if np.allclose(pi_learnt_PI, pi_opt):
             #     print("optimal policy found using policy iteration")
-
             assert np.allclose(pi_learnt_PI, pi_opt)
 
-            V_VI_init = np.full(n_states, init_value)
             Q_VI_init = np.full((n_states, n_actions), init_value)
             history_VI = []
             num_evaluations_VI = 0
-            V_VI, Q_VI, pi_learnt_VI, history_VI, num_evaluations_VI = value_iteration(V_VI_init, Q_VI_init, R, P, T, gamma, theta, history_VI, num_evaluations_VI)
+            Q_VI, pi_learnt_VI, history_VI, num_evaluations_VI = value_iteration(Q_VI_init, R, P, T, gamma, theta, history_VI, num_evaluations_VI)
             evaluations_VI.append(num_evaluations_VI)
             
             # if np.allclose(pi_learnt_VI, pi_opt):
@@ -225,11 +206,10 @@ if __name__ == "__main__":
 
             np.allclose(pi_learnt_VI, pi_opt)
 
-            V_GPI_init = np.full(n_states, init_value)
             Q_GPI_init = np.full((n_states, n_actions), init_value)
             history_GPI = []
             num_evaluations_GPI = 0
-            V_GPI, Q_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(V_GPI_init, Q_GPI_init, R, P, T, gamma, theta, history_GPI, num_evaluations_GPI)
+            Q_GPI, pi_learnt_GPI, history_GPI, num_evaluations_GPI = generalized_policy_iteration(Q_GPI_init, R, P, T, gamma, theta, history_GPI, num_evaluations_GPI)
             evaluations_GPI.append(num_evaluations_GPI)
 
             # if np.allclose(pi_learnt_GPI, pi_opt):
