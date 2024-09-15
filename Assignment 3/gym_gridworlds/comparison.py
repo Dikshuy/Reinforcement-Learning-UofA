@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 initializations = [-100, -10, -5, 0, 5, 10, 100]
 steps_PI = [3376, 3464, 3467, 3470, 3472, 3474, 3500]
 steps_VI = [8, 8, 8, 8, 168, 237, 466]
-steps_GPI = [25, 35, 40, 30, 70, 215, 470]
+steps_GPI = [25, 35, 40, 30, 70, 225, 480]
 
 plt.figure(figsize=(10, 6))
 

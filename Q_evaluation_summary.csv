@@ -1,4 +1,4 @@
-Algorithm,Mean Evaluations,Std Evaluations
-Policy Iteration,2181.4285714285716,1211.4268867912815
+Algorithm,Mean,Standard Deviation
+Policy Iteration,2877.1428571428573,1084.5962288298058
 Value Iteration,130.0,162.7083279982927
-Generalized Policy Iteration,130.71428571428572,154.95226388030818
+Generalized Policy Iteration,122.85714285714286,159.92983155249104
