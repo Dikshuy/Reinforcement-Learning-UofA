@@ -146,8 +146,8 @@ def plot_Q_function(Q, axs, gamma, grid_size):
 def save_data(evals_PI, evals_VI, evals_GPI):
     data = {
         "Algorithm": ["Policy Iteration", "Value Iteration", "Generalized Policy Iteration"],
-        "Mean Evaluations": [np.mean(evals_PI), np.mean(evals_VI), np.mean(evals_GPI)],
-        "Std Evaluations": [np.std(evals_PI), np.std(evals_VI), np.std(evals_GPI)]
+        "Mean": [np.mean(evals_PI), np.mean(evals_VI), np.mean(evals_GPI)],
+        "Standard Deviation": [np.std(evals_PI), np.std(evals_VI), np.std(evals_GPI)]
     }
 
     df = pd.DataFrame(data)
