@@ -190,9 +190,9 @@ if __name__ == "__main__":
     for init_value in initial_values:
 
         # plot for V-function and convergence history
-        fig1, axs1 = plt.subplots(2, len(gammas), figsize=(15, 10))
-        fig2, axs2 = plt.subplots(2, len(gammas), figsize=(15, 10))
-        fig3, axs3 = plt.subplots(2, len(gammas), figsize=(15, 10))
+        fig1, axs1 = plt.subplots(1, 1, figsize=(15, 10))
+        fig2, axs2 = plt.subplots(1, 1, figsize=(15, 10))
+        fig3, axs3 = plt.subplots(1, 1, figsize=(15, 10))
         fig1.suptitle(f"State-Value Function $V_0$: {init_value}")
         fig2.suptitle(f"State-Value Function $V_0$: {init_value}")
         fig3.suptitle(f"State-Value Function $V_0$: {init_value}")
@@ -233,32 +233,28 @@ if __name__ == "__main__":
 
             grid_size = int(np.sqrt(n_states))
 
-            axs1 = np.expand_dims(axs1, axis=1)
-            axs2 = np.expand_dims(axs2, axis=1)
-            axs3 = np.expand_dims(axs3, axis=1)
-
-            # plot V function
-            plot_v_function(V_PI, axs1[0][i], gamma, grid_size)
-            plot_v_function(V_VI, axs2[0][i], gamma, grid_size)
-            plot_v_function(V_GPI, axs3[0][i], gamma, grid_size)
+            # # plot V function
+            # plot_v_function(V_PI, axs1[0][i], gamma, grid_size)
+            # plot_v_function(V_VI, axs2[0][i], gamma, grid_size)
+            # plot_v_function(V_GPI, axs3[0][i], gamma, grid_size)
 
             # plot convergence history
-            axs1[1][i].plot(history_PI)
-            axs1[1][i].set_title(f'Convergence history of Policy Iteration , $\gamma$ = {gamma}')
-            axs1[1][i].set_xlabel('Iteration')
-            axs1[1][i].set_ylabel('Bellman Error')
+            axs1.plot(history_PI)
+            axs1.set_title(f'Convergence history of Policy Iteration')
+            axs1.set_xlabel('Iteration')
+            axs1.set_ylabel('Bellman Error')
 
             # plot convergence history
-            axs2[1][i].plot(history_VI)
-            axs2[1][i].set_title(f'Convergence history of Value Iteration, $\gamma$ = {gamma}')
-            axs2[1][i].set_xlabel('Iteration')
-            axs2[1][i].set_ylabel('Bellman Error')
+            axs2.plot(history_VI)
+            axs2.set_title(f'Convergence history of Value Iteration')
+            axs2.set_xlabel('Iteration')
+            axs2.set_ylabel('Bellman Error')
 
             # plot convergence history
-            axs3[1][i].plot(history_GPI)
-            axs3[1][i].set_title(f'Convergence history of Generalized Policy Iteration, $\gamma$ = {gamma}')
-            axs3[1][i].set_xlabel('Iteration')
-            axs3[1][i].set_ylabel('Bellman Error')
+            axs3.plot(history_GPI)
+            axs3.set_title(f'Convergence history of Generalized Policy Iteration')
+            axs3.set_xlabel('Iteration')
+            axs3.set_ylabel('Bellman Error')
 
         plt.tight_layout(rect=[0, 0.03, 1, 0.95])
         # plt.show()
