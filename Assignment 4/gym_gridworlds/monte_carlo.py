@@ -23,14 +23,18 @@ for s in range(n_states):
 
 P = P * (1.0 - T[..., None])  # next state probability for terminal transitions is 0
 
-def bellman_q(pi, gamma):
-    I = np.eye(n_states * n_actions)
-    P_under_pi = (
-        P[..., None] * pi[None, None]
-    ).reshape(n_states * n_actions, n_states * n_actions)
-    return (
-        R.ravel() * np.linalg.inv(I - gamma * P_under_pi)
-    ).sum(-1).reshape(n_states, n_actions)
+def bellman_q(pi, gamma, max_iter=1000):
+    delta = np.inf
+    iter = 0
+    Q = np.zeros((n_states, n_actions))
+    be = np.zeros((max_iter))
+    while delta > 1e-5 and iter < max_iter:
+        Q_new = R + (np.dot(P, gamma * (Q * pi)).sum(-1))
+        delta = np.abs(Q_new - Q).sum()
+        be[iter] = delta
+        Q = Q_new
+        iter += 1
+    return Q
 
 def episode(env, Q, eps, seed):
     data = dict()
