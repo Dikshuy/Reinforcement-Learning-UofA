@@ -53,25 +53,55 @@ def episode(env, Q, eps, seed):
         s = s_next
     return data
 
-def eps_greedy_probs(Q, eps):
-    pass
+def eps_greedy_probs(Q, s, eps):
     # return action probabilities
+    p_action = np.zeros((n_states, n_actions))
+    best_action = np.random.choice(np.where(Q[s] == np.max(Q[s]))[0])
+    for a in range(n_actions):
+        if a == best_action:
+            p_action[s][a] = 1 - eps + eps/n_actions
+        else:
+            p_action[s][a] = eps/n_actions
+
+    return p_action
 
 def eps_greedy_action(Q, s, eps):
     # return action drawn according to eps-greedy policy
     if np.random.rand() < eps:
         action = np.random.choice(n_actions)
     else:
-        max_value = np.max(Q[s])
-        best_actions = np.where(Q[s] == max_value)[0]
-        action = np.random.choice(best_actions)
+        action = np.random.choice(np.where(Q[s] == np.max(Q[s]))[0])
 
     return action
 
 
 def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is):
-    pass
     # return Q, be
+    steps = 0
+    eps = 1
+    returns = np.zeros((n_states, n_actions))
+    bellman_error = []
+
+    while steps < max_steps:
+        for _ in range(episodes_per_iteration):
+            data = episode(env, Q, eps, int(seed))
+            steps += len(data["s"])
+
+            G = 0
+            for t in reversed(data["s"]):
+                s, a, r = data["s"][t], data["a"][t], data["r"][t]
+                G = gamma * G + r
+                returns[s,a] += G
+                Q[s,a] = np.average(returns[s,a])
+
+            eps = max(eps - eps_decay * steps, 0.01)
+            pi = eps_greedy_probs(Q, s, eps)
+            Q_original = bellman_q(pi, G)
+            error = np.abs(Q-Q_original)
+            bellman_error.append(error)
+    print(Q)
+    return Q, np.array(bellman_error)
+            
 
 
 def error_shade_plot(ax, data, stepsize, **kwargs):
@@ -90,7 +120,7 @@ horizon = 10
 
 episodes_per_iteration = [1, 10, 50]
 decays = [1, 2, 5]
-seeds = np.arange(50)
+seeds = np.arange(10)   # change to 50
 
 results = np.zeros((
     len(episodes_per_iteration),
