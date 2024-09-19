@@ -77,6 +77,8 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
     steps = 0
     eps = 1
     returns = np.zeros((n_states, n_actions))
+    count = np.zeros((n_states, n_actions))
+    returns_count = 0
     bellman_error = np.zeros(max_steps)
 
     pi = eps_greedy_probs(Q, eps)
@@ -86,17 +88,18 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
     while steps < max_steps:
         current_step = steps
         for _ in range(episodes_per_iteration):
-            data = episode(env, Q, eps, int(seed))
-            steps += horizon
+            data = episode(env, Q, eps, seed = np.random.randint(10000))
+            steps += len(data["s"])
 
             G = 0
             for t in reversed(range(len(data["s"]))):
                 s, a, r = data["s"][t], data["a"][t], data["r"][t]
                 G = gamma * G + r
                 returns[s, a] += G
-                Q[s, a] = np.average(returns[s, a])
+                count[s, a] += 1
+                Q[s, a] = returns[s, a] / count[s, a]
 
-            eps = max(eps - eps_decay * steps, 0.01)
+            eps = max(eps - eps_decay / max_steps * steps, 0.01)
 
             if steps >= max_steps:
                 break
@@ -117,8 +120,7 @@ def error_shade_plot(ax, data, stepsize, **kwargs):
     (line,) = ax.plot(x, y, **kwargs)
     error = np.nanstd(data, axis=0)
     error = 1.96 * error / np.sqrt(data.shape[0])
-    ax.fill_between(x, y - error, y + error, alpha=0.2,
-                    linewidth=0.0, color=line.get_color())
+    ax.fill_between(x, y - error, y + error, alpha=0.2, linewidth=0.0, color=line.get_color())
 
 
 init_value = 0.0
