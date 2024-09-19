@@ -21,20 +21,19 @@ for s in range(n_states):
         P[s, a, s_next] = 1.0
         T[s, a] = terminated
 
-P = P * (1.0 - T[..., None])  # next state probability for terminal transitions is 0
+# next state probability for terminal transitions is 0
+P = P * (1.0 - T[..., None])
 
-def bellman_q(pi, gamma, max_iter=1000):
-    delta = np.inf
-    iter = 0
-    Q = np.zeros((n_states, n_actions))
-    be = np.zeros((max_iter))
-    while delta > 1e-5 and iter < max_iter:
-        Q_new = R + (np.dot(P, gamma * (Q * pi)).sum(-1))
-        delta = np.abs(Q_new - Q).sum()
-        be[iter] = delta
-        Q = Q_new
-        iter += 1
-    return Q
+
+def bellman_q(pi, gamma):
+    I = np.eye(n_states * n_actions)
+    P_under_pi = (
+        P[..., None] * pi[None, None]
+    ).reshape(n_states * n_actions, n_states * n_actions)
+    return (
+        R.ravel() * np.linalg.inv(I - gamma * P_under_pi)
+    ).sum(-1).reshape(n_states, n_actions)
+
 
 def episode(env, Q, eps, seed):
     data = dict()
@@ -53,17 +52,15 @@ def episode(env, Q, eps, seed):
         s = s_next
     return data
 
-def eps_greedy_probs(Q, s, eps):
-    # return action probabilities
-    p_action = np.zeros((n_states, n_actions))
-    best_action = np.random.choice(np.where(Q[s] == np.max(Q[s]))[0])
-    for a in range(n_actions):
-        if a == best_action:
-            p_action[s][a] = 1 - eps + eps/n_actions
-        else:
-            p_action[s][a] = eps/n_actions
 
-    return p_action
+def eps_greedy_probs(Q, eps):
+    # return action probabilities
+    pi = np.ones_like(Q) * (eps / n_actions)
+    best_actions = np.argmax(Q, axis=1)
+    for s in range(Q.shape[0]):
+        pi[s, best_actions[s]] += (1 - eps)
+    return pi
+
 
 def eps_greedy_action(Q, s, eps):
     # return action drawn according to eps-greedy policy
@@ -80,28 +77,37 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
     steps = 0
     eps = 1
     returns = np.zeros((n_states, n_actions))
-    bellman_error = []
+    bellman_error = np.zeros(max_steps)
+
+    pi = eps_greedy_probs(Q, eps)
+    Q_true = bellman_q(pi, gamma)
+    bellman_error[0] = np.abs(Q - Q_true).mean()
 
     while steps < max_steps:
+        current_step = steps
         for _ in range(episodes_per_iteration):
             data = episode(env, Q, eps, int(seed))
-            steps += len(data["s"])
+            steps += horizon
 
             G = 0
-            for t in reversed(data["s"]):
+            for t in reversed(range(len(data["s"]))):
                 s, a, r = data["s"][t], data["a"][t], data["r"][t]
                 G = gamma * G + r
-                returns[s,a] += G
-                Q[s,a] = np.average(returns[s,a])
+                returns[s, a] += G
+                Q[s, a] = np.average(returns[s, a])
 
             eps = max(eps - eps_decay * steps, 0.01)
-            pi = eps_greedy_probs(Q, s, eps)
-            Q_original = bellman_q(pi, G)
-            error = np.abs(Q-Q_original)
-            bellman_error.append(error)
-    print(Q)
-    return Q, np.array(bellman_error)
-            
+
+            if steps >= max_steps:
+                break
+
+        pi = eps_greedy_probs(Q, eps)
+        Q_true = bellman_q(pi, gamma)
+        error = np.abs(Q-Q_true).mean()
+
+        bellman_error[current_step:steps] = error
+
+    return Q, bellman_error
 
 
 def error_shade_plot(ax, data, stepsize, **kwargs):
@@ -111,7 +117,9 @@ def error_shade_plot(ax, data, stepsize, **kwargs):
     (line,) = ax.plot(x, y, **kwargs)
     error = np.nanstd(data, axis=0)
     error = 1.96 * error / np.sqrt(data.shape[0])
-    ax.fill_between(x, y - error, y + error, alpha=0.2, linewidth=0.0, color=line.get_color())
+    ax.fill_between(x, y - error, y + error, alpha=0.2,
+                    linewidth=0.0, color=line.get_color())
+
 
 init_value = 0.0
 gamma = 0.9
@@ -120,7 +128,7 @@ horizon = 10
 
 episodes_per_iteration = [1, 10, 50]
 decays = [1, 2, 5]
-seeds = np.arange(10)   # change to 50
+seeds = np.arange(50)
 
 results = np.zeros((
     len(episodes_per_iteration),
@@ -136,7 +144,8 @@ plt.show()
 use_is = False  # repeat with True
 for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
     ax.set_prop_cycle(
-        color=["red", "green", "blue", "black", "orange", "cyan", "brown", "gray", "pink"]
+        color=["red", "green", "blue", "black",
+               "orange", "cyan", "brown", "gray", "pink"]
     )
     ax.set_xlabel("Steps")
     ax.set_ylabel("Absolute Bellman Error")
@@ -150,7 +159,8 @@ for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
             for seed in seeds:
                 np.random.seed(seed)
                 Q = np.zeros((n_states, n_actions)) + init_value
-                Q, be = monte_carlo(env, Q, gamma, decay / max_steps, max_steps, episodes, use_is)
+                Q, be = monte_carlo(env, Q, gamma, decay /
+                                    max_steps, max_steps, episodes, use_is)
                 results[j, k, seed] = be
             error_shade_plot(
                 ax,
