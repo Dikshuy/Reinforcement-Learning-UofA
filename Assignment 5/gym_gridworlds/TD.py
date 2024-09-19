@@ -40,11 +40,21 @@ def bellman_q(pi, gamma, max_iter=1000):
 
 
 def eps_greedy_probs(Q, eps):
-    return
+    # return action probabilities
+    pi = np.ones_like(Q) * (eps / n_actions)
+    best_actions = np.argmax(Q, axis=1)
+    for s in range(Q.shape[0]):
+        pi[s, best_actions[s]] += (1 - eps)
+    return pi
 
 
 def eps_greedy_action(Q, s, eps):
-    return
+    # return action drawn according to eps-greedy policy
+    if np.random.rand() < eps:
+        action = np.random.choice(n_actions)
+    else:
+        action = np.random.choice(np.where(Q[s] == np.max(Q[s]))[0])
+    return action
 
 
 def expected_return(env, Q, gamma, episodes=10):
@@ -72,6 +82,16 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     tot_steps = 0
     while True:
         pass
+        # if alg == "SARSA":
+        #     Q[s, a] += alpha * [r + gamma * Q[s_next, a_next] - Q[s, a]]
+        #     s, a = s_next, a_next
+        # if alg == "QL":
+        #     greedy_action = eps_greedy_action(Q, s_next, eps)
+        #     Q[s, a] += alpha * [r + gamma * Q[s_next][greedy_action] - Q[s, a]]
+        #     s, a = s_next, a_next
+        # else:
+        #     expected = pi[s_next, a] * Q[s_next, a] 
+        #     Q[s, a] += alpha * [r + gamma * expected - Q[s, a]]
         # TD learning with if ... else for the 3 algorithms
         # log TD error at every timestep
         # log B error only every 100 steps
