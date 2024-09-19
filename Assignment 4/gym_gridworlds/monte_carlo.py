@@ -82,7 +82,7 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
 
     pi = eps_greedy_probs(Q, eps)
     Q_true = bellman_q(pi, gamma)
-    bellman_error[0] = np.abs(Q - Q_true).mean()
+    bellman_error[0] = np.abs(Q - Q_true).sum()
 
     while total_steps < max_steps:
         current_step = total_steps
@@ -106,7 +106,7 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
 
         pi = eps_greedy_probs(Q, eps)
         Q_true = bellman_q(pi, gamma)
-        error = np.abs(Q-Q_true).mean()
+        error = np.abs(Q-Q_true).sum()
 
         bellman_error[current_step:total_steps] = error
 
