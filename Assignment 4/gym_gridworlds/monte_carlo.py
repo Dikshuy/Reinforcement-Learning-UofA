@@ -58,8 +58,16 @@ def eps_greedy_probs(Q, eps):
     # return action probabilities
 
 def eps_greedy_action(Q, s, eps):
-    pass
     # return action drawn according to eps-greedy policy
+    if np.random.rand() < eps:
+        action = np.random.choice(n_actions)
+    else:
+        max_value = np.max(Q[s])
+        best_actions = np.where(Q[s] == max_value)[0]
+        action = np.random.choice(best_actions)
+
+    return action
+
 
 def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is):
     pass
