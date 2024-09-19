@@ -1,2 +1,0 @@
-[gymnasium.envs]
-Gym-Gridworlds = gym_gridworlds.gym:register_envs
