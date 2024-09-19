@@ -48,6 +48,21 @@ def eps_greedy_probs(Q, eps):
     return pi
 
 
+def eps_greedy_probs_s(Q, s, eps):
+    n_actions = len(Q[s])
+    probs = np.ones(n_actions) * eps / n_actions  # Start with equal probability for all actions (exploration)
+    
+    # Greedy action (exploit)
+    max_q_value = np.max(Q[s])
+    greedy_actions = np.where(Q[s] == max_q_value)[0]
+    greedy_action = np.random.choice(greedy_actions)  # Randomly select among ties
+    
+    # Assign higher probability to the greedy action(s)
+    probs[greedy_action] += 1.0 - eps  # Adjust the probability of the greedy action
+    
+    return probs
+
+
 def eps_greedy_action(Q, s, eps):
     # return action drawn according to eps-greedy policy
     if np.random.rand() < eps:
@@ -80,22 +95,41 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     eps_decay = eps / max_steps
     alpha_decay = alpha / max_steps
     tot_steps = 0
-    while True:
-        pass
-        # if alg == "SARSA":
-        #     Q[s, a] += alpha * [r + gamma * Q[s_next, a_next] - Q[s, a]]
-        #     s, a = s_next, a_next
-        # if alg == "QL":
-        #     greedy_action = eps_greedy_action(Q, s_next, eps)
-        #     Q[s, a] += alpha * [r + gamma * Q[s_next][greedy_action] - Q[s, a]]
-        #     s, a = s_next, a_next
-        # else:
-        #     expected = pi[s_next, a] * Q[s_next, a] 
-        #     Q[s, a] += alpha * [r + gamma * expected - Q[s, a]]
-        # TD learning with if ... else for the 3 algorithms
-        # log TD error at every timestep
-        # log B error only every 100 steps
-        # expected_return(env_eval, Q, gamma) only every
+    while tot_steps < max_steps:
+        s, _ = env_eval.reset()
+        done = False
+        while not done and tot_steps < max_steps:
+            a = eps_greedy_action(Q, s, eps)
+            s_next, r, terminated, truncated, _ = env_eval.step(a)
+            done = terminated or truncated
+            a_next = eps_greedy_action(Q, s_next, eps)
+
+            # TD learning with if ... else for the 3 algorithms
+            # log TD error at every timestep
+            if alg == "SARSA":
+                td_error = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
+            if alg == "QL":
+                td_error = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
+            else:
+                pi = eps_greedy_probs_s(Q, s_next, eps)
+                td_error = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
+        
+            Q[s,a] += alpha * td_error
+
+            tde[tot_steps] = abs(td_error)
+
+            # log B error only every 100 steps
+            # expected_return(env_eval, Q, gamma) only every
+            if tot_steps%100 == 0:
+                be.append(np.sum(np.abs(Q - bellman_q(eps_greedy_probs(Q, 0.0), gamma))))
+                exp_ret.append(expected_return(env_eval, Q, gamma))
+
+            eps = max(eps - eps_decay, 0.01)
+            alpha = max(alpha - alpha_decay, 0.001)
+
+            s = s_next
+            tot_steps += 1
+
     return Q, be, tde, exp_ret
 
 
@@ -151,7 +185,7 @@ results_exp_ret = np.zeros((
     max_steps // 100,
 ))
 
-fig, axs = plt.subplots(1, 3)
+fig, axs = plt.subplots(1, 3, figsize=(18, 6), dpi=120)
 plt.ion()
 plt.show()
 
