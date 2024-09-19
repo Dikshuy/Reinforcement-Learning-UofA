@@ -144,7 +144,7 @@ results = np.zeros((
     max_steps,
 ))
 
-fig, axs = plt.subplots(1, 2)
+fig, axs = plt.subplots(1, 2, figsize=(12, 6), dpi=120)
 plt.ion()
 plt.show()
 
