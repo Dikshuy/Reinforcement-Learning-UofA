@@ -87,41 +87,64 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     be = []
     exp_ret = []
     tde = np.zeros(max_steps)
-    eps_decay = eps / max_steps
-    alpha_decay = alpha / max_steps
+    Q1, Q2 = Q, Q
+    # eps_decay = eps / max_steps
+    # alpha_decay = alpha / max_steps
     tot_steps = 0
     while tot_steps < max_steps:
         s, _ = env.reset()
         done = False
         while not done and tot_steps < max_steps:
-            a = eps_greedy_action(Q, s, eps)
+            a = eps_greedy_action(Q1+Q2, s, eps)
             s_next, r, terminated, truncated, _ = env.step(a)
             done = terminated or truncated
-            a_next = eps_greedy_action(Q, s_next, eps)
 
             # TD learning with if ... else for the 3 algorithms
             # log TD error at every timestep
-            if alg == "SARSA":
-                td_err = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
-            if alg == "QL":
-                td_err = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
+            if alg == "Double SARSA":
+                if np.random.rand() < eps:
+                    a_next = np.random.choice(n_actions)
+                else:
+                    a_next = np.argmax((Q1[s_next] + Q2[s_next])/2)
+
+                if np.random.rand() > 0.5:
+                    td_err = r + gamma * Q2[s_next, a_next] * (1 - done) - Q1[s, a]
+                    Q1[s,a] += alpha * td_err
+                else:
+                    td_err = r + gamma * Q1[s_next, a_next] * (1 - done) - Q2[s, a]
+                    Q2[s,a] += alpha * td_err
+                
+            if alg == "Double QL":
+                if np.random.rand() > 0.5:
+                    a_next = eps_greedy_action(Q1, s_next, eps)
+                    td_err = r + gamma * Q2[s_next, a_next] * (1 - done) - Q1[s, a]
+                    Q1[s,a] += alpha * td_err
+                else:
+                    a_next = eps_greedy_action(Q2, s_next, eps)
+                    td_err = r + gamma * Q1[s_next, a_next] * (1 - done) - Q2[s, a]
+                    Q2[s,a] += alpha * td_err
+                    
             else:
-                pi = eps_greedy_probs_s(Q, s_next, eps)
-                td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
-        
-            Q[s,a] += alpha * td_err
+                pi = eps_greedy_probs_s((Q1+Q2)/2, s_next, eps)
+                if np.random.rand() > 0.5:
+                    td_err = r + gamma * np.dot(Q2[s_next], pi) * (1 - done) - Q1[s, a]
+                    Q1[s,a] += alpha * td_err
+                else:
+                    td_err = r + gamma * np.dot(Q1[s_next], pi) * (1 - done) - Q2[s, a]
+                    Q2[s,a] += alpha * td_err
 
             tde[tot_steps] = abs(td_err)
 
             # log B error only every 100 steps
             # expected_return(env_eval, Q, gamma) only every
             if tot_steps % 100 == 0:
-                Q_true = bellman_q(eps_greedy_probs(Q, 0.0), gamma)     # change for different alg?
-                be.append(np.mean(np.abs(Q - Q_true)))
-                exp_ret.append(expected_return(env_eval, Q, gamma))
+                Q_avg = (Q1 + Q2) / 2
+                Q_true = bellman_q(eps_greedy_probs(Q_avg, 0.0), gamma)     # change for different alg?
+                be.append(np.mean(np.abs(Q_avg - Q_true)))
+                exp_ret.append(expected_return(env_eval, Q_avg, gamma))
 
-            eps = max(eps - eps_decay / max_steps, 0.01)
-            alpha = max(alpha - alpha_decay / max_steps, 0.001)
+            eps = max(eps - 1 / max_steps, 0.01)
+            alpha = max(alpha - 0.1 / max_steps, 0.001)
 
             s = s_next
             tot_steps += 1
@@ -159,8 +182,8 @@ max_steps = 10000
 horizon = 10
 
 init_values = [-10, 0.0, 10]
-algs = ["QL", "SARSA", "Exp_SARSA"]
-seeds = np.arange(50)
+algs = ["Double QL", "Double SARSA", "Double Exp_SARSA"]
+seeds = np.arange(10)
 
 results_be = np.zeros((
     len(init_values),

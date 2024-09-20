@@ -49,13 +49,13 @@ def eps_greedy_probs(Q, eps):
 
 
 def eps_greedy_probs_s(Q, s, eps):
-    pi = np.ones(n_actions) * eps / n_actions
+    p_s = np.ones(n_actions) * eps / n_actions
     greedy_actions = np.where(Q[s] == np.max(Q[s]))[0]
     greedy_action = np.random.choice(greedy_actions) 
     
-    pi[greedy_action] += 1.0 - eps
+    p_s[greedy_action] += 1.0 - eps
     
-    return pi
+    return p_s
 
 
 def eps_greedy_action(Q, s, eps):
@@ -87,8 +87,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     be = []
     exp_ret = []
     tde = np.zeros(max_steps)
-    # eps_decay = eps / max_steps
-    # alpha_decay = alpha / max_steps
+    eps_decay = eps / max_steps
+    alpha_decay = alpha / max_steps
     tot_steps = 0
     while tot_steps < max_steps:
         s, _ = env.reset()
@@ -102,16 +102,16 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # TD learning with if ... else for the 3 algorithms
             # log TD error at every timestep
             if alg == "SARSA":
-                td_error = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
+                td_err = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
             if alg == "QL":
-                td_error = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
+                td_err = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
             else:
                 pi = eps_greedy_probs_s(Q, s_next, eps)
-                td_error = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
+                td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
         
-            Q[s,a] += alpha * td_error
+            Q[s,a] += alpha * td_err
 
-            tde[tot_steps] = abs(td_error)
+            tde[tot_steps] = abs(td_err)
 
             # log B error only every 100 steps
             # expected_return(env_eval, Q, gamma) only every
@@ -120,8 +120,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 
-            eps = max(eps - 1 / max_steps, 0.01)
-            alpha = max(alpha - 0.1 / max_steps, 0.001)
+            eps = max(eps - eps_decay / max_steps, 0.01)
+            alpha = max(alpha - alpha_decay / max_steps, 0.001)
 
             s = s_next
             tot_steps += 1
@@ -160,7 +160,7 @@ horizon = 10
 
 init_values = [-10, 0.0, 10]
 algs = ["QL", "SARSA", "Exp_SARSA"]
-seeds = np.arange(10)
+seeds = np.arange(50)
 
 results_be = np.zeros((
     len(init_values),
