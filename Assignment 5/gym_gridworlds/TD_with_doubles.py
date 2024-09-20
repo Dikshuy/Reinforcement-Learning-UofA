@@ -87,8 +87,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     exp_ret = []
     tde = np.zeros(max_steps)
     Q1, Q2 = Q, Q
-    # eps_decay = eps / max_steps
-    # alpha_decay = alpha / max_steps
+    eps_decay = eps / max_steps
+    alpha_decay = alpha / max_steps
     tot_steps = 0
     while tot_steps < max_steps:
         s, _ = env.reset()
@@ -144,8 +144,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 
-            eps = max(eps - 1 / max_steps, 0.01)
-            alpha = max(alpha - 0.1 / max_steps, 0.001)
+            eps = max(eps - eps_decay, 0.01)
+            alpha = max(alpha - alpha_decay, 0.001)
 
             s = s_next
             tot_steps += 1
