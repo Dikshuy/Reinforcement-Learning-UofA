@@ -118,7 +118,7 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             if tot_steps % 100 == 0:
                 if alg == "QL":
                     Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
-                elif alg == "SARSA" or alg == "Exp_SARSA":
+                else:
                     Q_true = bellman_q(eps_greedy_probs(Q, eps), gamma)
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
