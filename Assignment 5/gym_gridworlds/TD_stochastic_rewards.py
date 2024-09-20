@@ -50,10 +50,10 @@ def eps_greedy_probs(Q, eps):
 
 def eps_greedy_probs_s(Q, s, eps):
     p_s = np.ones(n_actions) * eps / n_actions
-    greedy_actions = np.where(Q[s] == np.max(Q[s]))[0]
-    greedy_action = np.random.choice(greedy_actions) 
+    best_actions = np.where(Q[s] == np.max(Q[s]))[0]
+    best_action = np.random.choice(best_actions) 
     
-    p_s[greedy_action] += 1.0 - eps
+    p_s[best_action] += 1.0 - eps
     
     return p_s
 
@@ -103,9 +103,9 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # log TD error at every timestep
             if alg == "SARSA":
                 td_err = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
-            if alg == "QL":
+            elif alg == "QL":
                 td_err = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
-            else:
+            elif alg == "Exp_SARSA":
                 pi = eps_greedy_probs_s(Q, s_next, eps)
                 td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
         
@@ -116,9 +116,9 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # log B error only every 100 steps
             # expected_return(env_eval, Q, gamma) only every
             if tot_steps % 100 == 0:
-                if alg == "Double QL":
+                if alg == "QL":
                     Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
-                else:
+                elif alg == "SARSA" or alg == "Exp_SARSA":
                     Q_true = bellman_q(eps_greedy_probs(Q, eps), gamma)
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
@@ -184,7 +184,7 @@ results_exp_ret = np.zeros((
     max_steps // 100,
 ))
 
-fig, axs = plt.subplots(1, 3, figsize=(18, 6), dpi=120)
+fig, axs = plt.subplots(1, 3, figsize=(18, 6))
 plt.ion()
 plt.show()
 
@@ -195,7 +195,9 @@ for ax in axs:
         color=["red", "green", "blue", "black",
                "orange", "cyan", "brown", "gray", "pink"]
     )
-    ax.set_xlabel("Steps")
+    ax.set_xlabel("Steps", fontsize=10)
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax.minorticks_on()
 
 env = gymnasium.make(
     "Gym-Gridworlds/Penalty-3x3-v0",
@@ -220,7 +222,7 @@ for i, init_value in enumerate(init_values):
             results_exp_ret[i, j, seed] = exp_ret
             print(i, j, seed)
         label = f"$Q_0$: {init_value}, Alg: {alg}"
-        axs[0].set_title("TD Error")
+        axs[0].set_title("TD Error", fontsize=12)
         error_shade_plot(
             axs[0],
             results_tde[i, j],
@@ -230,7 +232,7 @@ for i, init_value in enumerate(init_values):
         )
         axs[0].legend()
         axs[0].set_ylim([0, 5])
-        axs[1].set_title("Bellman Error")
+        axs[1].set_title("Bellman Error", fontsize=12)
         error_shade_plot(
             axs[1],
             results_be[i, j],
@@ -240,7 +242,7 @@ for i, init_value in enumerate(init_values):
         )
         axs[1].legend()
         axs[1].set_ylim([0, 50])
-        axs[2].set_title("Expected Return")
+        axs[2].set_title("Expected Return", fontsize=12)
         error_shade_plot(
             axs[2],
             results_exp_ret[i, j],
@@ -250,8 +252,10 @@ for i, init_value in enumerate(init_values):
         )
         axs[2].legend()
         axs[2].set_ylim([-5, 1])
+        plt.tight_layout() 
         plt.draw()
         plt.pause(0.001)
 
+plt.savefig("TD(0).png", dpi=300)
 plt.ioff()
 plt.show()
