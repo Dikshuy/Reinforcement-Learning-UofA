@@ -119,12 +119,12 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
                 if alg == "QL":
                     Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
                 else:
-                    Q_true = bellman_q(eps_greedy_probs(Q, 0.001), gamma)    # check here
+                    Q_true = bellman_q(eps_greedy_probs(Q, eps), gamma)
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 
-            eps = max(eps - eps_decay / max_steps, 0.01)
-            alpha = max(alpha - alpha_decay / max_steps, 0.001)
+            eps = max(eps - eps_decay, 0.01)
+            alpha = max(alpha - alpha_decay, 0.001)
 
             s = s_next
             tot_steps += 1

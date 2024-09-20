@@ -123,8 +123,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 
-            eps = max(eps - eps_decay / max_steps, 0.01)
-            alpha = max(alpha - alpha_decay / max_steps, 0.001)
+            eps = max(eps - eps_decay, 0.01)
+            alpha = max(alpha - alpha_decay, 0.001)
 
             s = s_next
             tot_steps += 1
@@ -256,6 +256,6 @@ for i, init_value in enumerate(init_values):
         plt.draw()
         plt.pause(0.001)
 
-plt.savefig("TD(0).png", dpi=300)
+plt.savefig("TD(0)_stochastic_rewards.png", dpi=300)
 plt.ioff()
 plt.show()
