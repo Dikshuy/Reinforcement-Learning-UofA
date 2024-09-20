@@ -101,10 +101,7 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # TD learning with if ... else for the 3 algorithms
             # log TD error at every timestep
             if alg == "Double SARSA":
-                if np.random.rand() < eps:
-                    a_next = np.random.choice(n_actions)
-                else:
-                    a_next = np.argmax((Q1[s_next] + Q2[s_next])/2)
+                a_next = eps_greedy_action((Q1+Q2)/2, s_next, eps)
 
                 if np.random.rand() > 0.5:
                     td_err = r + gamma * Q2[s_next, a_next] * (1 - done) - Q1[s, a]
