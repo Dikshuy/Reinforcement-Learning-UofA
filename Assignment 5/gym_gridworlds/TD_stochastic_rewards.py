@@ -116,7 +116,10 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # log B error only every 100 steps
             # expected_return(env_eval, Q, gamma) only every
             if tot_steps % 100 == 0:
-                Q_true = bellman_q(eps_greedy_probs(Q, 0.0), gamma)
+                if alg == "Double QL":
+                    Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
+                else:
+                    Q_true = bellman_q(eps_greedy_probs(Q, eps), gamma)
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 

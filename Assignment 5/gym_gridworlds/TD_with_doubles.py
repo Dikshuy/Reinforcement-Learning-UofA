@@ -138,10 +138,12 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
             # log B error only every 100 steps
             # expected_return(env_eval, Q, gamma) only every
             if tot_steps % 100 == 0:
-                Q_avg = (Q1 + Q2) / 2
-                Q_true = bellman_q(eps_greedy_probs(Q_avg, 0.0), gamma)     # change for different alg?
-                be.append(np.mean(np.abs(Q_avg - Q_true)))
-                exp_ret.append(expected_return(env_eval, Q_avg, gamma))
+                if alg == "QL":
+                    Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
+                else:
+                    Q_true = bellman_q(eps_greedy_probs(Q, eps), gamma)
+                be.append(np.mean(np.abs(Q - Q_true)))
+                exp_ret.append(expected_return(env_eval, Q, gamma))
 
             eps = max(eps - 1 / max_steps, 0.01)
             alpha = max(alpha - 0.1 / max_steps, 0.001)
