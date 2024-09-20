@@ -99,7 +99,7 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
                 count[s, a] += 1
                 Q[s, a] = returns[s, a] / count[s, a]
 
-            eps = max(eps - eps_decay / max_steps * episode_steps, 0.01)
+            eps = max(eps - eps_decay * episode_steps, 0.01)
 
             if total_steps >= max_steps:
                 break
@@ -139,7 +139,7 @@ results = np.zeros((
     max_steps,
 ))
 
-fig, axs = plt.subplots(1, 2, figsize=(12, 6), dpi=120)
+fig, axs = plt.subplots(1, 2, figsize=(12, 6))
 plt.ion()
 plt.show()
 
@@ -148,8 +148,11 @@ for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
     ax.set_prop_cycle(
         color=["red", "green", "blue", "black", "orange", "cyan", "brown", "gray", "pink"]
     )
-    ax.set_xlabel("Steps")
-    ax.set_ylabel("Absolute Bellman Error")
+    ax.set_xlabel("Steps", fontsize=10)
+    ax.set_ylabel("Absolute Bellman Error", fontsize=10)
+    ax.grid(True, which="both", linestyle="--", linewidth=0.5)
+    ax.minorticks_on()
+
     env = gymnasium.make(
         "Gym-Gridworlds/Penalty-3x3-v0",
         max_total_steps=horizon,
@@ -169,8 +172,10 @@ for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
                 label=f"Episodes: {episodes}, Decay: {decay}",
             )
             ax.legend()
+            plt.tight_layout() 
             plt.draw()
             plt.pause(0.001)
 
+plt.savefig("MC.png", dpi=300)
 plt.ioff()
 plt.show()
