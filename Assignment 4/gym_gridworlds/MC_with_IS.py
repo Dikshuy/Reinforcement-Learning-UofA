@@ -74,7 +74,6 @@ def eps_greedy_action(Q, s, eps):
 
 def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is, seed):
     # return Q, be
-    total_steps = 0
     eps_behavior = 1
     eps_target = 0.01
     C = np.zeros((n_states, n_actions))
@@ -83,6 +82,7 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
     pi = eps_greedy_probs(Q, eps_target)
     Q_true = bellman_q(pi, gamma)
     bellman_error[0] = np.abs(Q - Q_true).sum()
+    total_steps = 1
 
     while total_steps < max_steps:
         current_step = total_steps
