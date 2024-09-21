@@ -72,12 +72,11 @@ def eps_greedy_action(Q, s, eps):
     return action
 
 
-def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is):
+def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is, seed):
     # return Q, be
     total_steps = 0
     eps = 1
-    returns = np.zeros((n_states, n_actions))
-    count = np.zeros((n_states, n_actions))
+    C = np.zeros((n_states, n_actions))
     bellman_error = np.zeros(max_steps)
 
     pi = eps_greedy_probs(Q, eps)
@@ -86,29 +85,36 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
 
     while total_steps < max_steps:
         current_step = total_steps
-        for _ in range(episodes_per_iteration):
-            data = episode(env, Q, eps, seed = np.random.randint(10000))
-            episode_steps = len(data["s"])
-            total_steps += episode_steps
+        episodes_data = []
 
-            G = 0
-            for t in reversed(range(episode_steps)):
-                s, a, r = data["s"][t], data["a"][t], data["r"][t]
-                G = gamma * G + r
-                returns[s, a] += G
-                count[s, a] += 1
-                Q[s, a] = returns[s, a] / count[s, a]
+        for _ in range(episodes_per_iteration):
+            
+            data = episode(env, Q, eps, seed=seed)
+            episodes_data.append(data)
+            episode_steps = len(data["s"])
+
+            total_steps += episode_steps
 
             eps = max(eps - eps_decay * episode_steps, 0.01)
 
             if total_steps >= max_steps:
                 break
+        
+        for data in episodes_data:
+            G = 0
+            W = 1
+
+            for t in reversed(range(len(data["s"]))):
+                s, a, r = data["s"][t], data["a"][t], data["r"][t]
+                G = gamma * G + r 
+                C[s, a] += W
+                Q[s, a] += (W / C[s, a]) * (G - Q[s, a])
 
         pi = eps_greedy_probs(Q, eps)
         Q_true = bellman_q(pi, gamma)
         error = np.abs(Q-Q_true).sum()
 
-        bellman_error[current_step:total_steps] = error
+        bellman_error[current_step: total_steps] = error
 
     return Q, bellman_error
 
@@ -124,7 +130,7 @@ def error_shade_plot(ax, data, stepsize, **kwargs):
 
 
 init_value = 0.0
-gamma = 0.9
+gamma = 0.99
 max_steps = 2000
 horizon = 10
 
@@ -155,7 +161,7 @@ for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
 
     env = gymnasium.make(
         "Gym-Gridworlds/Penalty-3x3-v0",
-        max_total_steps=horizon,
+        max_episode_steps=horizon,
         reward_noise_std=reward_noise_std,
     )
     for j, episodes in enumerate(episodes_per_iteration):
@@ -163,7 +169,7 @@ for ax, reward_noise_std in zip(axs, [0.0, 3.0]):
             for seed in seeds:
                 np.random.seed(seed)
                 Q = np.zeros((n_states, n_actions)) + init_value
-                Q, be = monte_carlo(env, Q, gamma, decay / max_steps, max_steps, episodes, use_is)
+                Q, be = monte_carlo(env, Q, gamma, decay / max_steps, max_steps, episodes, use_is, int(seed))
                 results[j, k, seed] = be
             error_shade_plot(
                 ax,
