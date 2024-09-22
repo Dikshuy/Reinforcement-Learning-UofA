@@ -108,10 +108,12 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg, _seed):
                 a_next = eps_greedy_action(Q, s_next, eps)
                 td_err = r + gamma * Q[s_next, a_next] * (1 - terminated) - Q[s, a]
             elif alg == "QL":
-                a_next = np.argmax(Q[s_next])
+                best_actions = np.where(Q[s_next] == np.max(Q[s_next]))[0]
+                a_next = np.random.choice(best_actions)
                 td_err = r + gamma * np.max(Q[s_next]) * (1 - terminated) - Q[s, a]
             else:
-                a_next = np.argmax(Q[s_next])
+                best_actions = np.where(Q[s_next] == np.max(Q[s_next]))[0]
+                a_next = np.random.choice(best_actions)
                 pi = eps_greedy_probs_s(Q, s_next, eps)
                 td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - terminated) - Q[s, a]
         

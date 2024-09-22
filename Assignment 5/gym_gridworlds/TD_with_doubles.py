@@ -116,11 +116,13 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg, _seed):
                 
             elif alg == "Double QL":
                 if np.random.rand() > 0.5:
-                    a_next = np.argmax(Q2[s_next])
+                    best_actions = np.where(Q2[s_next] == np.max(Q2[s_next]))[0]
+                    a_next = np.random.choice(best_actions)
                     td_err = r + gamma * Q2[s_next, a_next] * (1 - terminated) - Q1[s, a]
                     Q1[s,a] += alpha * td_err
                 else:
-                    a_next = np.argmax(Q1[s_next])
+                    best_actions = np.where(Q1[s_next] == np.max(Q1[s_next]))[0]
+                    a_next = np.random.choice(best_actions)
                     td_err = r + gamma * Q1[s_next, a_next] * (1 - terminated) - Q2[s, a]
                     Q2[s,a] += alpha * td_err
                     
