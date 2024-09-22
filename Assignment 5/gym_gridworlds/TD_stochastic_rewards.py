@@ -40,10 +40,9 @@ def bellman_q(pi, gamma, max_iter=1000):
 
 
 def eps_greedy_probs(Q, eps):
-    # return action probabilities
-    pi = np.ones_like(Q) * (eps / n_actions)
+    pi = np.ones((n_states, n_actions)) * (eps / n_actions)
     best_actions = np.argmax(Q, axis=1)
-    for s in range(Q.shape[0]):
+    for s in range(n_states):
         pi[s, best_actions[s]] += (1 - eps)
     return pi
 
@@ -59,7 +58,6 @@ def eps_greedy_probs_s(Q, s, eps):
 
 
 def eps_greedy_action(Q, s, eps):
-    # return action drawn according to eps-greedy policy
     if np.random.rand() < eps:
         action = np.random.choice(n_actions)
     else:
@@ -86,35 +84,41 @@ def expected_return(env, Q, gamma, episodes=10):
 def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg, _seed):
     be = []
     exp_ret = []
-    tde = np.zeros(max_steps)
+    tde = []
     eps_decay = eps / max_steps
     alpha_decay = alpha / max_steps
     tot_steps = 0
     while tot_steps < max_steps:
-        s, _ = env.reset(seed=_seed)
+        s, _ = env.reset(seed = _seed)
+        a = eps_greedy_action(Q, s, eps)
         done = False
         while not done and tot_steps < max_steps:
-            a = eps_greedy_action(Q, s, eps)
-            s_next, r, terminated, truncated, _ = env.step(a)
-            done = terminated or truncated
-            a_next = eps_greedy_action(Q, s_next, eps)
-
-            # TD learning with if ... else for the 3 algorithms
-            # log TD error at every timestep
+            tot_steps += 1
             if alg == "SARSA":
-                td_err = r + gamma * Q[s_next, a_next] * (1 - done) - Q[s, a]
+                s_next, r, terminated, truncated, _ = env.step(a)
+            else:
+                a = eps_greedy_action(Q, s, eps)
+                s_next, r, terminated, truncated, _ = env.step(a)
+
+            done = terminated or truncated
+            eps = max(eps - eps_decay, 0.01)
+            alpha = max(alpha - alpha_decay, 0.001)
+
+            if alg == "SARSA":
+                a_next = eps_greedy_action(Q, s_next, eps)
+                td_err = r + gamma * Q[s_next, a_next] * (1 - terminated) - Q[s, a]
             elif alg == "QL":
-                td_err = r + gamma * np.max(Q[s_next]) * (1 - done) - Q[s, a]
-            elif alg == "Exp_SARSA":
+                a_next = np.argmax(Q[s_next])
+                td_err = r + gamma * np.max(Q[s_next]) * (1 - terminated) - Q[s, a]
+            else:
+                a_next = np.argmax(Q[s_next])
                 pi = eps_greedy_probs_s(Q, s_next, eps)
-                td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - done) - Q[s, a]
+                td_err = r + gamma * np.dot(Q[s_next], pi) * (1 - terminated) - Q[s, a]
         
             Q[s,a] += alpha * td_err
 
-            tde[tot_steps] = abs(td_err)
+            tde.append(abs(td_err))
 
-            # log B error only every 100 steps
-            # expected_return(env_eval, Q, gamma) only every
             if tot_steps % 100 == 0:
                 if alg == "QL":
                     Q_true = bellman_q(eps_greedy_probs(Q, 0), gamma)
@@ -123,11 +127,8 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg, _seed):
                 be.append(np.mean(np.abs(Q - Q_true)))
                 exp_ret.append(expected_return(env_eval, Q, gamma))
 
-            eps = max(eps - eps_decay, 0.01)
-            alpha = max(alpha - alpha_decay, 0.001)
-
             s = s_next
-            tot_steps += 1
+            a = a_next
 
     return Q, be, tde, exp_ret
 
@@ -220,7 +221,7 @@ for i, init_value in enumerate(init_values):
             results_be[i, j, seed] = be
             results_tde[i, j, seed] = tde
             results_exp_ret[i, j, seed] = exp_ret
-            print(i, j, seed)
+            # print(i, j, seed)
         label = f"$Q_0$: {init_value}, Alg: {alg}"
         axs[0].set_title("TD Error", fontsize=12)
         error_shade_plot(
@@ -256,6 +257,6 @@ for i, init_value in enumerate(init_values):
         plt.draw()
         plt.pause(0.001)
 
-plt.savefig("TD(0)_stochastic_rewards.png", dpi=300)
+plt.savefig("TD(0)_stochastic_reward.png", dpi=300)
 plt.ioff()
 plt.show()
