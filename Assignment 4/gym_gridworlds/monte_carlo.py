@@ -72,7 +72,7 @@ def eps_greedy_action(Q, s, eps):
     return action
 
 
-def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is, seed):
+def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use_is, _seed):
     # return Q, be
     eps = 1
     C = np.zeros((n_states, n_actions))
@@ -90,7 +90,7 @@ def monte_carlo(env, Q, gamma, eps_decay, max_steps, episodes_per_iteration, use
 
         for _ in range(episodes_per_iteration):
             
-            data = episode(env, Q, eps, seed=seed)
+            data = episode(env, Q, eps, seed=_seed)
             episodes_data.append(data)
             episode_steps = len(data["s"])
 
@@ -131,7 +131,7 @@ def error_shade_plot(ax, data, stepsize, **kwargs):
 
 
 init_value = 0.0
-gamma = 0.99
+gamma = 0.9
 max_steps = 2000
 horizon = 10
 
