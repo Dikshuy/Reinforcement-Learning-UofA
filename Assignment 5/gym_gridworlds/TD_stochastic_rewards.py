@@ -83,7 +83,7 @@ def expected_return(env, Q, gamma, episodes=10):
     return G.mean()
 
 
-def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
+def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg, _seed):
     be = []
     exp_ret = []
     tde = np.zeros(max_steps)
@@ -91,7 +91,7 @@ def td(env, env_eval, Q, gamma, eps, alpha, max_steps, alg):
     alpha_decay = alpha / max_steps
     tot_steps = 0
     while tot_steps < max_steps:
-        s, _ = env.reset()
+        s, _ = env.reset(seed=_seed)
         done = False
         while not done and tot_steps < max_steps:
             a = eps_greedy_action(Q, s, eps)
@@ -216,7 +216,7 @@ for i, init_value in enumerate(init_values):
             np.random.seed(seed)
             Q = np.zeros((n_states, n_actions)) + init_value
             Q, be, tde, exp_ret = td(
-                env, env_eval, Q, gamma, eps, alpha, max_steps, alg)
+                env, env_eval, Q, gamma, eps, alpha, max_steps, alg, int(seed))
             results_be[i, j, seed] = be
             results_tde[i, j, seed] = tde
             results_exp_ret[i, j, seed] = exp_ret
