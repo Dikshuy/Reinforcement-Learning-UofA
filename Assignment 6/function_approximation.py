@@ -20,6 +20,8 @@ def poly_features(state: np.array, degree: int) -> np.array:
     Compute polynomial features. For example, if state = (s1, s2) and degree = 2,
     the output must be [1, s1, s2, s1*s2, s1**2, s2**2].
     """
+    polynomial = PolynomialFeatures(degree)
+    return polynomial.fit_transform(state)
 
 def rbf_features(
     state: np.array,  # (N, S)
@@ -29,6 +31,8 @@ def rbf_features(
     """
     Computes exp(- ||state - centers||**2 / sigmas**2 / 2).
     """
+    dist = np.sum((state[:, np.newaxis, :] - centers[np.newaxis, :, :])**2, axis = -1)  # N, D, S
+    return np.exp(-dist/(2*sigmas**2 ))
 
 def tile_features(
     state: np.array,  # (N, S)
@@ -49,6 +53,17 @@ def tile_features(
     Note that tile coding is more general and allows for rectangles (not just squares)
     but let's consider only squares for the sake of simplicity.
     """
+    N, D = state.shape[0], centers.shape[0]
+    activated_features = np.zeros((N, D))
+    for offset in offsets:
+        new_centers = centers + np.array(offset)
+        dist = np.abs(state[:, np.newaxis, :] - new_centers[np.newaxis, :, :])      # N,D,S
+        within_tile = dist < (widths/2)
+        total_inside = np.all(within_tile, axis=-1)
+        activated_features += total_inside
+
+    activated_features = activated_features/len(offsets)
+    return activated_features
 
 def coarse_features(
     state: np.array,  # (N, S)
@@ -62,6 +77,16 @@ def coarse_features(
     Note that coarse coding is more general and allows for ellipses (not just circles)
     but let's consider only circles for the sake of simplicity.
     """
+    N, D = state.shape[0], centers.shape[0]
+    activated_features = np.zeros((N, D))
+    for offset in offsets:
+        new_centers = centers + np.array(offset)
+        dist = np.linalg.norm(state[:, np.newaxis, :] - new_centers[np.newaxis, :, :], axis=-1)     # N,D,S
+        within_tile = dist < (widths/2)
+        activated_features += within_tile
+
+    activated_features = activated_features/len(offsets)
+    return activated_features
 
 def aggregation_features(state: np.array, centers: np.array) -> np.array:
     """
@@ -70,6 +95,13 @@ def aggregation_features(state: np.array, centers: np.array) -> np.array:
     Note that we can turn this into a discrete (finite) representation of the state,
     because we will have as many feature representations as centers.
     """
+    N, D = state.shape[0], centers.shape[0]
+    dist = state[:, np.newaxis, :] - centers[np.newaxis, :, :]      # N,D,S
+    distances = np.sum(dist**2, axis=-1)                            # N,D
+    closest_centers = np.argmin(distances, axis=-1)                 # N
+    features = np.zeros((N, D))                                     # N,D
+    features[np.arange(state.shape[0]), closest_centers] = 1        # N,D
+    return features
 
 state_size = 2
 n_samples = 10
@@ -157,24 +189,40 @@ plt.show()
 # or discuss if some FA is not suitable to fit the given function, and report your plots.
 # Anything like the demo plot is fine.
 
+n_centers = 100
+state = np.random.rand(n_samples, state_size)  # in [0, 1]
+
+state_1_centers = np.linspace(-10, 10, n_centers)
+state_2_centers = np.linspace(-10, 10, n_centers)
+centers = np.array(
+    np.meshgrid(state_1_centers, state_2_centers)
+).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
+sigmas = 0.2
+widths = 0.2
+offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 max_iter = 10000
 thresh = 1e-8
 alpha = 1.0
 
 for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
-        lambda state : poly_features(state, ...),
-        lambda state : rbf_features(state, ...),
-        lambda state : tile_features(state, ...),
-        lambda state : coarse_features(state, ...),
-        lambda state : aggregation_features(state, ...),
+        lambda state : poly_features(state, 3),
+        lambda state : rbf_features(state, centers, sigmas),
+        lambda state : tile_features(state, centers, widths, offsets),
+        lambda state : coarse_features(state, centers, widths, offsets),
+        lambda state : aggregation_features(state, centers),
     ]):
+    if name == "Poly":  alpha = 0.0001
+    else:   alpha = 1.4
     phi = get_phi(x[..., None])  # from (N,) to (N, S) with S = 1
     weights = np.zeros(phi.shape[-1])
     pbar = tqdm(total=max_iter)
     for iter in range(max_iter):
         # do gradient descent
-        mse = ...
+        y_hat = np.dot(phi, weights)
+        mse = np.mean((y_hat - y)**2)
+        grad = -2 * np.dot(phi.T, (y - y_hat)) / y.shape[0]
+        weights -= alpha * grad
         pbar.set_description(f"MSE: {mse}")
         pbar.update()
         if mse < thresh:
@@ -187,7 +235,7 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
     plt.show()
-
+exit()
 # Now repeat the experiment but fit the following function y.
 # Submit your plots and discuss your results, paying attention to the
 # non-smoothness of the new target function.
