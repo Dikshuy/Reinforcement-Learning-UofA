@@ -1,5 +1,4 @@
 import numpy as np
-import gymnasium
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from sklearn.preprocessing import PolynomialFeatures  # makes poly features super easy
@@ -48,7 +47,7 @@ def tile_features(
     Recall that tiles are squares, so you can't use the L2 Euclidean distance to
     check if a state belongs to a tile, but the absolute distance.
     Note that tile coding is more general and allows for rectangles (not just squares)
-    but let's consider only squares for the sake of simplicity. 
+    but let's consider only squares for the sake of simplicity.
     """
 
 def coarse_features(
@@ -115,8 +114,8 @@ plt.suptitle(f"State {state[0]}")
 plt.show()
 
 #################### PART 1
-# Submit your heatmaps. 
-# Note that the random seed is not fixed, so each of you will plot features 
+# Submit your heatmaps.
+# Note that the random seed is not fixed, so each of you will plot features
 # of a different point.
 # What are the hyperparameters of each FA and how do they affect the shape of
 # the function they can approximate?
@@ -144,7 +143,7 @@ plt.show()
 # and more iterations.
 #
 # - Use all 5 FAs implemented above and submit your plots. Select the
-#   hyperparameters (degree, centers, sigmas, width, offsets) to achieve the best
+#   hyperparameters (degree, centers, sigmas, widths, offsets) to achieve the best
 #   results (lowest MSE).
 # - Assume the state is now 2-dimensional with s in [-10, 10] x [0, 1000], i.e.,
 #   the 2nd dimension is in the range [0, 1000] while the 1st is still in [-10, 10].
@@ -152,6 +151,7 @@ plt.show()
 #   allows to pass different widths/sigmas for every dimension of the state.
 #   How would you change the hyperparameters? Would you have more centers?
 #   Or wider sigmas/widths? Both? Justify your answer in one sentence.
+#   (Note: you don't need to train/plot anything, this is a "what if" scenario.)
 #
 # Note: we don't want you to achieve MSE 0. Just have a decent plot with each FA,
 # or discuss if some FA is not suitable to fit the given function, and report your plots.
@@ -258,22 +258,36 @@ Q = data["Q"]
 V = data["Q"].max(-1)  # value of the greedy policy
 term = data["term"]
 n = s.shape[0]
+n_states = 81
+n_actions = 5
 gamma = 0.99
 
+# needed for heatmaps
+s_idx = np.ravel_multi_index(s.T, (9, 9))
+unique_s_idx = np.unique(s_idx, return_index=True)[1]
+
 fig, axs = plt.subplots(1, 1)
-axs.tricontourf(s[:, 0], s[:, 1], V, levels=100)
+# surf = axs.tricontourf(s[:, 0], s[:, 1], V)
+surf = axs.imshow(V[unique_s_idx].reshape(9, 9))
+plt.colorbar(surf)
 plt.show()
 
-max_iter = 20000
+max_iter = 1000
 alpha = 0.01
 thresh = 1e-8
 
+degree = ...
+centers = ...
+sigmas = ...
+widths = ...
+offsets = ...
+
 # Pick one
-# name, get_phi = "Poly", lambda state : poly_features(state, ...)
-# name, get_phi = "RBFs", lambda state : rbf_features(state, ...)
-# name, get_phi = "Tiles", lambda state : tile_features(state, ...)
-# name, get_phi = "Coarse", lambda state : coarse_features(state, ...)
-# name, get_phi = "Aggreg.", lambda state: aggregation_features(state, ...)
+# name, get_phi = "Poly", lambda state : poly_features(state, degree)
+# name, get_phi = "RBFs", lambda state : rbf_features(state, centers, sigmas)
+# name, get_phi = "Coarse", lambda state : coarse_features(state, centers, widths, offsets)
+# name, get_phi = "Tiles", lambda state : tile_features(state, centers, widths, offsets)
+# name, get_phi = "Aggreg.", lambda state: aggregation_features(state, centers)
 
 phi = get_phi(s)
 phi_next = get_phi(s_next)
@@ -290,16 +304,25 @@ for iter in range(max_iter):
 
 print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
 fig, axs = plt.subplots(1, 2)
-axs[0].tricontourf(s[:, 0], s[:, 1], V, levels=100)
-axs[1].tricontourf(s[:, 0], s[:, 1], td_prediction, levels=100)
-axs[0].set_title("True Function")
-axs[1].set_title(f"Approximation with ??? (MSE {mse:.3f})")
+axs[0].imshow(V[unique_s_idx].reshape(9, 9))
+axs[1].imshow(td_prediction[unique_s_idx].reshape(9, 9))
+axs[0].set_title("V")
+axs[1].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
 
 
 #################### PART 4
 # - Run TD again, but this time learn an approximation of the Q-function.
 #   How did you have to change your code?
+# - You'll notice that the approximation you have learned seem very wrong. Why?
+#   (hint: what is the given data missing? For example, is there any sample for
+#   LEFT/RIGHT/UP/DOWN at goals?)
+# - You may still be able to learn a Q-function approximation that makes the
+#   agent act (almost) optimally. Beside your features and how they generalize,
+#   what other hyperparameter is crucial in this scenario?
+#
+# Note: don't try to learn a Q-function that acts optimally, anything like the
+# approximation in the screenshot below is fine.
 
 max_iter = 1000
 alpha = 0.01
@@ -318,13 +341,15 @@ for iter in range(max_iter):
     if mse < thresh:
         break
 
+print(Q[unique_s_idx].argmax(-1).reshape(9, 9))  # check optimal policy
+
 print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
-fig, axs = plt.subplots(5, 2)
-for i in range(5):
-    axs[i][0].tricontourf(s[:, 0], s[:, 1], Q[:, i], levels=100)
-    axs[i][1].tricontourf(s[:, 0], s[:, 1], ..., levels=100)  # depends on how you implemented it
-    axs[i][0].set_title("True Function")
-    axs[i][1].set_title(f"Approximation with ??? (MSE {mse:.3f})")
+fig, axs = plt.subplots(2, n_actions)
+for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
+    axs[0][i].imshow(Q[unique_s_idx, i].reshape(9, 9))
+    axs[1][i].imshow(td_prediction[unique_s_idx, i].reshape(9, 9))
+    axs[0][i].set_title(f"Q {j}")
+    axs[1][i].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
 
 
