@@ -143,7 +143,7 @@ for ax, title in zip(axs, titles):
     ax.plot(state[0][0], state[0][1], marker="+", markersize=12, color="red")
     ax.set_title(title)
 plt.suptitle(f"State {state[0]}")
-plt.show()
+# plt.show()
 
 #################### PART 1
 # Submit your heatmaps.
@@ -158,6 +158,9 @@ plt.show()
 # - In state aggregation the hyperparameter(s) is/are ...
 # Discuss each bullet point in at most two sentences.
 
+'''
+================================================================================================
+'''
 
 #################### PART 2
 # Consider the function below.
@@ -166,7 +169,7 @@ x = np.linspace(-10, 10, 100)
 y = np.sin(x) + x**2 - 0.5 * x**3 + np.log(np.abs(x))
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-plt.show()
+# plt.show()
 
 # With SL, (try to) train a linear approximation to fit the above function (y)
 # using gradient descent.
@@ -212,8 +215,6 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
         lambda state : coarse_features(state, centers, widths, offsets),
         lambda state : aggregation_features(state, centers),
     ]):
-    if name == "Poly":  alpha = 0.0001
-    else:   alpha = 1.4
     phi = get_phi(x[..., None])  # from (N,) to (N, S) with S = 1
     weights = np.zeros(phi.shape[-1])
     pbar = tqdm(total=max_iter)
@@ -234,8 +235,12 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[1].plot(x, y_hat)
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
-    plt.show()
-exit()
+    # plt.show()
+
+'''
+polynomial is not converging
+'''
+
 # Now repeat the experiment but fit the following function y.
 # Submit your plots and discuss your results, paying attention to the
 # non-smoothness of the new target function.
@@ -253,21 +258,40 @@ y[60:70] = 0.0
 y[70:100] = np.cos(x[70:100]) * 100.0
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-plt.show()
+# plt.show()
+
+n_centers = 100
+state = np.random.rand(n_samples, state_size)  # in [0, 1]
+
+state_1_centers = np.linspace(-10, 10, n_centers)
+state_2_centers = np.linspace(-10, 10, n_centers)
+centers = np.array(
+    np.meshgrid(state_1_centers, state_2_centers)
+).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
+sigmas = 0.2
+widths = 0.2
+offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
+
+max_iter = 10000
+thresh = 1e-8
+alpha = 1.0
 
 for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
-        lambda state : poly_features(state, ...),
-        lambda state : rbf_features(state, ...),
-        lambda state : tile_features(state, ...),
-        lambda state : coarse_features(state, ...),
-        lambda state : aggregation_features(state, ...),
+        lambda state : poly_features(state, 10),
+        lambda state : rbf_features(state, centers, sigmas),
+        lambda state : tile_features(state, centers, widths, offsets),
+        lambda state : coarse_features(state, centers, widths, offsets),
+        lambda state : aggregation_features(state, centers),
     ]):
     phi = get_phi(x[..., None])
     weights = np.zeros(phi.shape[-1])
     pbar = tqdm(total=max_iter)
     for iter in range(max_iter):
         # do gradient descent
-        mse = ...
+        y_hat = np.dot(phi, weights)
+        mse = np.mean((y_hat - y)**2)
+        grad = -2 * np.dot(phi.T, (y - y_hat)) / y.shape[0]
+        weights -= alpha * grad
         pbar.set_description(f"MSE: {mse}")
         pbar.update()
         if mse < thresh:
@@ -279,8 +303,11 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[1].plot(x, y_hat)
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
-    plt.show()
+    # plt.show()
 
+'''
+================================================================================================
+'''
 
 #################### PART 3
 # Consider the Gridworld depicted below. The dataset below contains episodes
@@ -358,6 +385,9 @@ axs[0].set_title("V")
 axs[1].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
 
+'''
+================================================================================================
+'''
 
 #################### PART 4
 # - Run TD again, but this time learn an approximation of the Q-function.
