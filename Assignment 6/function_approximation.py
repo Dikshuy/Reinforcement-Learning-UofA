@@ -460,8 +460,8 @@ for iter in range(max_iter):
         mask = (a == action)
         weights[action] += alpha * np.dot(phi[mask].T, td_error[mask])
 
-    q = np.dot(phi_next, weights.T)
-    mse = np.mean((Q-q)**2)  # prediction - Q
+    q_pred = np.dot(phi_next, weights.T)
+    mse = np.mean((Q-q_pred)**2)  # prediction - Q
     pbar.set_description(f"TDE: {td_error}, MSE: {mse}")
     pbar.update()
     if mse < thresh:
@@ -473,7 +473,7 @@ print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
 fig, axs = plt.subplots(2, n_actions, figsize=(15, 6))
 for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
     axs[0][i].imshow(Q[unique_s_idx, i].reshape(9, 9))
-    axs[1][i].imshow(q[unique_s_idx, i].reshape(9, 9))
+    axs[1][i].imshow(q_pred[unique_s_idx, i].reshape(9, 9))
     axs[0][i].set_title(f"Q {j}")
     axs[1][i].set_title(f"Approx. with RBFs: (MSE {mse:.3f})")
 plt.tight_layout(rect=[0, 0, 1, 0.95])
