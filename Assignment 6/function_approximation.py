@@ -32,7 +32,7 @@ def rbf_features(
     Computes exp(- ||state - centers||**2 / sigmas**2 / 2).
     """
     dist = np.sum((state[:, np.newaxis, :] - centers[np.newaxis, :, :])**2, axis = -1)  # N, D, S
-    return np.exp(-dist/(2*sigmas**2 ))
+    return np.exp(-dist/(2*(sigmas**2)))
 
 def tile_features(
     state: np.array,  # (N, S)
@@ -143,7 +143,7 @@ for ax, title in zip(axs, titles):
     ax.plot(state[0][0], state[0][1], marker="+", markersize=12, color="red")
     ax.set_title(title)
 plt.suptitle(f"State {state[0]}")
-# plt.show()
+plt.show()
 
 #################### PART 1
 # Submit your heatmaps.
@@ -169,7 +169,7 @@ x = np.linspace(-10, 10, 100)
 y = np.sin(x) + x**2 - 0.5 * x**3 + np.log(np.abs(x))
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-# plt.show()
+plt.show()
 
 # With SL, (try to) train a linear approximation to fit the above function (y)
 # using gradient descent.
@@ -201,12 +201,11 @@ centers = np.array(
     np.meshgrid(state_1_centers, state_2_centers)
 ).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
 sigmas = 0.2
-widths = 0.2
+widths = 0.25
 offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 max_iter = 10000
 thresh = 1e-8
-alpha = 1.0
 
 for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
         lambda state : poly_features(state, 3),
@@ -215,6 +214,11 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
         lambda state : coarse_features(state, centers, widths, offsets),
         lambda state : aggregation_features(state, centers),
     ]):
+    if name == "Poly":
+        alpha = 1e-7
+    else:
+        alpha = 2.0
+
     phi = get_phi(x[..., None])  # from (N,) to (N, S) with S = 1
     weights = np.zeros(phi.shape[-1])
     pbar = tqdm(total=max_iter)
@@ -235,11 +239,7 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[1].plot(x, y_hat)
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
-    # plt.show()
-
-'''
-polynomial is not converging
-'''
+    plt.show()
 
 # Now repeat the experiment but fit the following function y.
 # Submit your plots and discuss your results, paying attention to the
@@ -258,7 +258,7 @@ y[60:70] = 0.0
 y[70:100] = np.cos(x[70:100]) * 100.0
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-# plt.show()
+plt.show()
 
 n_centers = 100
 state = np.random.rand(n_samples, state_size)  # in [0, 1]
@@ -269,7 +269,7 @@ centers = np.array(
     np.meshgrid(state_1_centers, state_2_centers)
 ).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
 sigmas = 0.2
-widths = 0.2
+widths = 0.25
 offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 max_iter = 10000
@@ -347,19 +347,25 @@ surf = axs.imshow(V[unique_s_idx].reshape(9, 9))
 plt.colorbar(surf)
 plt.show()
 
-max_iter = 1000
-alpha = 0.01
+max_iter = 25000
+alpha = 0.14
 thresh = 1e-8
+sigmas = 0.2
+n_centers = 10
 
-degree = 3
-state_1_centers = np.linspace(-10, 10, n_centers)
-state_2_centers = np.linspace(-10, 10, n_centers)
+state_1_centers = np.linspace(0, 10, n_centers)
+state_2_centers = np.linspace(0, 10, n_centers)
 centers = np.array(
     np.meshgrid(state_1_centers, state_2_centers)
 ).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
-sigmas = 0.2
+sigmas = 0.5
 widths = 0.2
-offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
+offsets = [] #[(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
+for i in range(0, 4):
+    for j in range(0, 4):
+    
+        if i != 0 and j != 0:
+            offsets.append((i/2, j/2))
 
 # Pick one
 # name, get_phi = "Poly", lambda state : poly_features(state, degree)
@@ -388,9 +394,16 @@ for iter in range(max_iter):
 print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
 fig, axs = plt.subplots(1, 2)
 axs[0].imshow(V[unique_s_idx].reshape(9, 9))
-axs[1].imshow(v_hat[unique_s_idx].reshape(9, 9))        # CHECK THIS
+axs[1].imshow(v_hat[unique_s_idx].reshape(9, 9))
 axs[0].set_title("V")
 axs[1].set_title(f"Approx. with ??? (MSE {mse:.3f})")
+plt.show()
+
+fig, axs = plt.subplots(1, 2)
+axs[0].tricontourf(s[:, 0], s[:, 1], V, levels = 100)
+axs[1].tricontourf(s[:, 0], s[:, 1], v_hat, levels = 100)
+axs[0].set_title("True Function")
+axs[1].set_title(f"Approximation with ??? (MSE {mse:.3f})")
 plt.show()
 
 '''
@@ -411,8 +424,25 @@ plt.show()
 # approximation in the screenshot below is fine.
 
 max_iter = 1000
-alpha = 0.01
+alpha = 0.14
 thresh = 1e-8
+
+max_iter = 25000
+alpha = 1e-3
+thresh = 1e-8
+sigmas = 0.2
+n_centers = 10
+
+state_1_centers = np.linspace(0, 10, n_centers)
+state_2_centers = np.linspace(0, 10, n_centers)
+
+centers = np.array(
+    np.meshgrid(state_1_centers, state_2_centers)
+).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
+sigmas = 0.5
+widths = 0.2
+
+name, get_phi = "RBFs", lambda state : rbf_features(state, centers, sigmas)
 
 phi = get_phi(s)
 phi_next = get_phi(s_next)
@@ -421,11 +451,14 @@ pbar = tqdm(total=max_iter)
 for iter in range(max_iter):
     # do TD semi-gradient
     q_hat = np.sum(phi * weights[a], axis=1)
-    q_hat_next = np.sum(phi_next * weights[a], axis=1)
-    td_error = r + gamma * q_hat_next * (1 - term) - q_hat
-    #### UPDATING WEIGHTS PENDING
-    q = np.dot(phi_next, weights)
-    mse = np.mean((Q-q))  # prediction - Q
+    q_next_hat = np.max(np.dot(phi_next, weights.T), axis=1)
+    td_error = r + gamma * q_next_hat * (1 - term) - q_hat
+    for action in range(n_actions):
+        mask = (a == action)
+        weights[action] += alpha * np.dot(phi[mask].T, td_error[mask])
+
+    q = np.dot(phi_next, weights.T)
+    mse = np.mean((Q-q)**2)  # prediction - Q
     pbar.set_description(f"TDE: {td_error}, MSE: {mse}")
     pbar.update()
     if mse < thresh:
@@ -442,6 +475,9 @@ for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
     axs[1][i].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
 
+'''
+================================================================================================
+'''
 
 #################### PART 5
 # Discuss similarities and differences between SL regression and RL TD regression.
