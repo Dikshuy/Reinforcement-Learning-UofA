@@ -125,7 +125,7 @@ tile_multi = tile_features(state, centers, widths, offsets)
 coarse_one = coarse_features(state, centers, widths)
 coarse_multi = coarse_features(state, centers, widths, offsets)
 
-fig, axs = plt.subplots(1, 6)
+fig, axs = plt.subplots(1, 6, figsize=(20, 4))
 extent = [
     state_1_centers[0],
     state_1_centers[-1],
@@ -140,10 +140,10 @@ axs[4].imshow(coarse_multi[0].reshape(n_centers, n_centers), extent=extent, orig
 axs[5].imshow(aggr[0].reshape(n_centers, n_centers), extent=extent, origin='lower')
 titles = ["RBFs", "Tile (1 Tiling)", "Tile (4 Tilings)", "Coarse (1 Field)", "Coarse (4 Fields)", "Aggreg."]  # we can't plot poly like this
 for ax, title in zip(axs, titles):
-    plt.tight_layout() 
     ax.plot(state[0][0], state[0][1], marker="+", markersize=12, color="red")
     ax.set_title(title)
 plt.suptitle(f"State {state[0]}")
+plt.tight_layout(rect=[0, 0, 1, 0.95])
 filename = f"FA.png"
 plt.savefig(filename, bbox_inches='tight')
 # plt.show()
@@ -470,12 +470,13 @@ for iter in range(max_iter):
 print(Q[unique_s_idx].argmax(-1).reshape(9, 9))  # check optimal policy
 
 print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
-fig, axs = plt.subplots(2, n_actions)
+fig, axs = plt.subplots(2, n_actions, figsize=(15, 6))
 for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
     axs[0][i].imshow(Q[unique_s_idx, i].reshape(9, 9))
     axs[1][i].imshow(q[unique_s_idx, i].reshape(9, 9))
     axs[0][i].set_title(f"Q {j}")
     axs[1][i].set_title(f"Approx. with RBFs: (MSE {mse:.3f})")
+plt.tight_layout(rect=[0, 0, 1, 0.95])
 filename = f"Q_approx.png"
 plt.savefig(filename, bbox_inches='tight')
 # plt.show()
