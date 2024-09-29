@@ -140,10 +140,13 @@ axs[4].imshow(coarse_multi[0].reshape(n_centers, n_centers), extent=extent, orig
 axs[5].imshow(aggr[0].reshape(n_centers, n_centers), extent=extent, origin='lower')
 titles = ["RBFs", "Tile (1 Tiling)", "Tile (4 Tilings)", "Coarse (1 Field)", "Coarse (4 Fields)", "Aggreg."]  # we can't plot poly like this
 for ax, title in zip(axs, titles):
+    plt.tight_layout() 
     ax.plot(state[0][0], state[0][1], marker="+", markersize=12, color="red")
     ax.set_title(title)
 plt.suptitle(f"State {state[0]}")
-plt.show()
+filename = f"FA.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 #################### PART 1
 # Submit your heatmaps.
@@ -169,7 +172,9 @@ x = np.linspace(-10, 10, 100)
 y = np.sin(x) + x**2 - 0.5 * x**3 + np.log(np.abs(x))
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-plt.show()
+filename = f"original_1.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 # With SL, (try to) train a linear approximation to fit the above function (y)
 # using gradient descent.
@@ -239,7 +244,9 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[1].plot(x, y_hat)
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
-    plt.show()
+    filename = f"{name}_approx.png"
+    plt.savefig(filename, bbox_inches='tight')
+    # plt.show()
 
 # Now repeat the experiment but fit the following function y.
 # Submit your plots and discuss your results, paying attention to the
@@ -258,7 +265,9 @@ y[60:70] = 0.0
 y[70:100] = np.cos(x[70:100]) * 100.0
 fig, axs = plt.subplots(1, 1)
 axs.plot(x, y)
-plt.show()
+filename = f"original_2.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 n_centers = 100
 state = np.random.rand(n_samples, state_size)  # in [0, 1]
@@ -274,15 +283,19 @@ offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 max_iter = 10000
 thresh = 1e-8
-alpha = 1.0
 
 for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
-        lambda state : poly_features(state, 10),
+        lambda state : poly_features(state, 3),
         lambda state : rbf_features(state, centers, sigmas),
         lambda state : tile_features(state, centers, widths, offsets),
         lambda state : coarse_features(state, centers, widths, offsets),
         lambda state : aggregation_features(state, centers),
     ]):
+    if name == "Poly":
+        alpha = 1e-7
+    else:
+        alpha = 2.0
+
     phi = get_phi(x[..., None])
     weights = np.zeros(phi.shape[-1])
     pbar = tqdm(total=max_iter)
@@ -303,6 +316,8 @@ for name, get_phi in zip(["Poly", "RBFs", "Tiles", "Coarse", "Aggreg."], [
     axs[1].plot(x, y_hat)
     axs[0].set_title("True Function")
     axs[1].set_title(f"Approximation with {name} (MSE {mse:.3f})")
+    filename = f"{name}_approx_2.png"
+    plt.savefig(filename, bbox_inches='tight')
     # plt.show()
 
 '''
@@ -345,7 +360,9 @@ fig, axs = plt.subplots(1, 1)
 # surf = axs.tricontourf(s[:, 0], s[:, 1], V)
 surf = axs.imshow(V[unique_s_idx].reshape(9, 9))
 plt.colorbar(surf)
-plt.show()
+filename = f"V.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 max_iter = 25000
 alpha = 0.14
@@ -360,12 +377,7 @@ centers = np.array(
 ).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
 sigmas = 0.5
 widths = 0.2
-offsets = [] #[(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
-for i in range(0, 4):
-    for j in range(0, 4):
-    
-        if i != 0 and j != 0:
-            offsets.append((i/2, j/2))
+offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 # Pick one
 # name, get_phi = "Poly", lambda state : poly_features(state, degree)
@@ -396,15 +408,10 @@ fig, axs = plt.subplots(1, 2)
 axs[0].imshow(V[unique_s_idx].reshape(9, 9))
 axs[1].imshow(v_hat[unique_s_idx].reshape(9, 9))
 axs[0].set_title("V")
-axs[1].set_title(f"Approx. with ??? (MSE {mse:.3f})")
-plt.show()
-
-fig, axs = plt.subplots(1, 2)
-axs[0].tricontourf(s[:, 0], s[:, 1], V, levels = 100)
-axs[1].tricontourf(s[:, 0], s[:, 1], v_hat, levels = 100)
-axs[0].set_title("True Function")
-axs[1].set_title(f"Approximation with ??? (MSE {mse:.3f})")
-plt.show()
+axs[1].set_title(f"Approx. with RBFs: (MSE {mse:.3f})")
+filename = f"V_approx.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 '''
 ================================================================================================
@@ -423,14 +430,9 @@ plt.show()
 # Note: don't try to learn a Q-function that acts optimally, anything like the
 # approximation in the screenshot below is fine.
 
-max_iter = 1000
-alpha = 0.14
-thresh = 1e-8
-
 max_iter = 25000
-alpha = 1e-3
+alpha = 0.0014
 thresh = 1e-8
-sigmas = 0.2
 n_centers = 10
 
 state_1_centers = np.linspace(0, 10, n_centers)
@@ -439,6 +441,7 @@ state_2_centers = np.linspace(0, 10, n_centers)
 centers = np.array(
     np.meshgrid(state_1_centers, state_2_centers)
 ).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
+
 sigmas = 0.5
 widths = 0.2
 
@@ -451,8 +454,8 @@ pbar = tqdm(total=max_iter)
 for iter in range(max_iter):
     # do TD semi-gradient
     q_hat = np.sum(phi * weights[a], axis=1)
-    q_next_hat = np.max(np.dot(phi_next, weights.T), axis=1)
-    td_error = r + gamma * q_next_hat * (1 - term) - q_hat
+    q_hat_next = np.max(np.dot(phi_next, weights.T), axis=1)
+    td_error = r + gamma * q_hat_next * (1 - term) - q_hat
     for action in range(n_actions):
         mask = (a == action)
         weights[action] += alpha * np.dot(phi[mask].T, td_error[mask])
@@ -472,8 +475,10 @@ for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
     axs[0][i].imshow(Q[unique_s_idx, i].reshape(9, 9))
     axs[1][i].imshow(q[unique_s_idx, i].reshape(9, 9))
     axs[0][i].set_title(f"Q {j}")
-    axs[1][i].set_title(f"Approx. with ??? (MSE {mse:.3f})")
-plt.show()
+    axs[1][i].set_title(f"Approx. with RBFs: (MSE {mse:.3f})")
+filename = f"Q_approx.png"
+plt.savefig(filename, bbox_inches='tight')
+# plt.show()
 
 '''
 ================================================================================================
