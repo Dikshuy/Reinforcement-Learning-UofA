@@ -54,16 +54,16 @@ def tile_features(
     but let's consider only squares for the sake of simplicity.
     """
     N, D = state.shape[0], centers.shape[0]
-    activated_features = np.zeros((N, D))
-    for offset in offsets:
-        new_centers = centers + np.array(offset)
-        dist = np.abs(state[:, np.newaxis, :] - new_centers[np.newaxis, :, :])      # N,D,S
-        within_tile = dist < (widths/2)
-        total_inside = np.all(within_tile, axis=-1)
-        activated_features += total_inside
+    features = np.zeros((N, D))
 
-    activated_features = activated_features/len(offsets)
-    return activated_features
+    for offset in offsets:
+        for i, center in enumerate(centers):
+            distance = np.abs(state - (center + offset))
+            inside_tile = (distance < widths).all(axis=1)
+            features[:, i] += inside_tile.astype(int)
+
+    features = features / len(offsets)
+    return features
 
 def coarse_features(
     state: np.array,  # (N, S)
@@ -78,15 +78,15 @@ def coarse_features(
     but let's consider only circles for the sake of simplicity.
     """
     N, D = state.shape[0], centers.shape[0]
-    activated_features = np.zeros((N, D))
-    for offset in offsets:
-        new_centers = centers + np.array(offset)
-        dist = np.linalg.norm(state[:, np.newaxis, :] - new_centers[np.newaxis, :, :], axis=-1)     # N,D,S
-        within_tile = dist < (widths/2)
-        activated_features += within_tile
+    features = np.zeros((N, D))
 
-    activated_features = activated_features/len(offsets)
-    return activated_features
+    for offset in offsets:
+        for i, center in enumerate(centers):
+            distance = np.sqrt(np.sum((state - (center + offset)) ** 2, axis=1))
+            features[:, i] += (distance < widths).astype(int)
+
+    features = features / len(offsets)
+    return features
 
 def aggregation_features(state: np.array, centers: np.array) -> np.array:
     """
