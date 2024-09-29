@@ -458,7 +458,7 @@ for iter in range(max_iter):
     td_error = r + gamma * q_hat_next * (1 - term) - q_hat
     for action in range(n_actions):
         mask = (a == action)
-        weights[action] += alpha * np.dot(phi[mask].T, td_error[mask])
+        weights[action] += alpha * np.dot(td_error[mask], phi[mask])
 
     q_pred = np.dot(phi_next, weights.T)
     mse = np.mean((Q-q_pred)**2)  # prediction - Q
