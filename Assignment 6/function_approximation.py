@@ -351,15 +351,19 @@ max_iter = 1000
 alpha = 0.01
 thresh = 1e-8
 
-degree = ...
-centers = ...
-sigmas = ...
-widths = ...
-offsets = ...
+degree = 3
+state_1_centers = np.linspace(-10, 10, n_centers)
+state_2_centers = np.linspace(-10, 10, n_centers)
+centers = np.array(
+    np.meshgrid(state_1_centers, state_2_centers)
+).reshape(state_size, -1).T  # makes a grid of uniformly spaced centers in the plane [-0.2, 1.2]^2
+sigmas = 0.2
+widths = 0.2
+offsets = [(-0.1, 0.0), (0.0, 0.1), (0.1, 0.0), (0.0, -0.1)]
 
 # Pick one
 # name, get_phi = "Poly", lambda state : poly_features(state, degree)
-# name, get_phi = "RBFs", lambda state : rbf_features(state, centers, sigmas)
+name, get_phi = "RBFs", lambda state : rbf_features(state, centers, sigmas)
 # name, get_phi = "Coarse", lambda state : coarse_features(state, centers, widths, offsets)
 # name, get_phi = "Tiles", lambda state : tile_features(state, centers, widths, offsets)
 # name, get_phi = "Aggreg.", lambda state: aggregation_features(state, centers)
@@ -370,8 +374,12 @@ weights = np.zeros(phi.shape[-1])
 pbar = tqdm(total=max_iter)
 for iter in range(max_iter):
     # do TD semi-gradient
-    td_error = ...
-    mse = ...  # prediction - V
+    v_hat = np.dot(phi, weights)
+    v_hat_next = np.dot(phi_next, weights)
+    td_error = r + gamma * v_hat_next * (1-term) - v_hat
+    grad = np.dot(phi.T, td_error) / s.shape[0]
+    weights += alpha * grad
+    mse = np.mean((V-v_hat)**2)  # prediction - V
     pbar.set_description(f"TDE: {td_error}, MSE: {mse}")
     pbar.update()
     if mse < thresh:
@@ -380,7 +388,7 @@ for iter in range(max_iter):
 print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
 fig, axs = plt.subplots(1, 2)
 axs[0].imshow(V[unique_s_idx].reshape(9, 9))
-axs[1].imshow(td_prediction[unique_s_idx].reshape(9, 9))
+axs[1].imshow(v_hat[unique_s_idx].reshape(9, 9))        # CHECK THIS
 axs[0].set_title("V")
 axs[1].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
@@ -408,12 +416,16 @@ thresh = 1e-8
 
 phi = get_phi(s)
 phi_next = get_phi(s_next)
-weights = np.zeros(...)  # you have to change something here
+weights = np.zeros((n_actions, phi.shape[-1]))  # you have to change something here
 pbar = tqdm(total=max_iter)
 for iter in range(max_iter):
     # do TD semi-gradient
-    td_error = ...
-    mse = ...  # prediction - Q
+    q_hat = np.sum(phi * weights[a], axis=1)
+    q_hat_next = np.sum(phi_next * weights[a], axis=1)
+    td_error = r + gamma * q_hat_next * (1 - term) - q_hat
+    #### UPDATING WEIGHTS PENDING
+    q = np.dot(phi_next, weights)
+    mse = np.mean((Q-q))  # prediction - Q
     pbar.set_description(f"TDE: {td_error}, MSE: {mse}")
     pbar.update()
     if mse < thresh:
@@ -425,7 +437,7 @@ print(f"Iterations: {iter}, MSE: {mse}, N. of Features {len(weights)}")
 fig, axs = plt.subplots(2, n_actions)
 for i, j in zip(range(n_actions), ["LEFT", "DOWN", "RIGHT", "UP", "STAY"]):
     axs[0][i].imshow(Q[unique_s_idx, i].reshape(9, 9))
-    axs[1][i].imshow(td_prediction[unique_s_idx, i].reshape(9, 9))
+    axs[1][i].imshow(q[unique_s_idx, i].reshape(9, 9))
     axs[0][i].set_title(f"Q {j}")
     axs[1][i].set_title(f"Approx. with ??? (MSE {mse:.3f})")
 plt.show()
