@@ -196,6 +196,7 @@ for i, (gradient_steps, color) in enumerate(zip(gradient_steps_sweep, ["r", "g",
             axs[0][0].set_xlabel("Steps")
             axs[1][0].set_xlabel("Updates")
 
+
             error_shade_plot(
                 axs[0][1],
                 results_ret[i, j, k],
