@@ -91,7 +91,7 @@ def fqi(seed):
                     f"TDE: {np.abs(td_error).sum():.3f}, " +
                     f"G: {exp_return:.3f}"
                 )
-            td_error_history[tot_steps] = np.abs(td_error).sum()
+            td_error_history[tot_steps] = np.abs(td_error).mean()
             exp_return_history[tot_steps] = exp_return
 
             s = s_next
@@ -134,7 +134,7 @@ fitting_iterations_sweep = [1, 20]
 update_frequency_sweep = [1, 20]
 gamma = 0.99
 alpha = 0.05
-max_steps = 15000
+max_steps = 10000
 log_frequency = 100
 n_seeds = 20
 
@@ -195,7 +195,6 @@ for i, (gradient_steps, color) in enumerate(zip(gradient_steps_sweep, ["r", "g",
             axs[0][0].set_title("TD Error")
             axs[0][0].set_xlabel("Steps")
             axs[1][0].set_xlabel("Updates")
-
 
             error_shade_plot(
                 axs[0][1],
