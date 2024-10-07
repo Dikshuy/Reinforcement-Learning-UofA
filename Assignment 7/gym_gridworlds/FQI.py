@@ -87,14 +87,12 @@ def fqi(seed, N, K, D):
                         for act in range(n_actions):
                             action_idx = np.array(data["a"]) == act
                             if action_idx.any(): # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
-                                phi_batch = np.array([get_phi(s) for s in data["s"]])[action_idx]
+                                phi_batch = np.array([get_phi(s) for s in data["s"]])
                                 td_prediction_batch = np.dot(phi_batch, weights)
-                                td_target_act = td_target_batch[:, act][action_idx]
-                                td_error_act = td_target_act - td_prediction_batch[:, act]
+                                td_error_act = td_target_batch - td_prediction_batch[:, act]
                                 abs_td_error[action_idx] = np.abs(td_error_act[action_idx])
                                 
-                                # gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
-                                gradient = (td_error_act[..., None] * phi_batch).mean(0)
+                                gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
                                 weights[:, act] += alpha * gradient
                         
                         abs_td_error = abs_td_error.mean()
