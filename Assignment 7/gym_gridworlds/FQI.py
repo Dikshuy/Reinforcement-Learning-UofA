@@ -34,48 +34,10 @@ def eps_greedy_action(Q, eps):
         i = np.random.choice(range(best.shape[0]))
         return best[i][0]
 
-
-def td_error_function(s, a, r, s_next, done, weights, gamma):
-    """Compute TD error based on weights and sampled data."""
-    phi = get_phi(s)
-    Q_sa = np.dot(phi, weights)[a]
-    if done:
-        target = r
-    else:
-        phi_next = get_phi(s_next)
-        Q_next = np.dot(phi_next, weights).max()
-        target = r + gamma * Q_next
-    return target - Q_sa
-
-    
-def save_td_error(data, max_iter=10000):
-    s = data["s"]
-    r = data["r"]
-    s_next = data["s_next"]
-    term = data["term"]
-
-    phi = get_phi(s)
-    phi_next = get_phi(s_next)
-    weights = np.zeros((phi.shape[-1], n_actions))
-    for iter in range(max_iter):
-        td_prediction = np.dot(phi, weights)
-        td_target = r + gamma * (1.0 - term) * np.dot(phi_next, weights).max(-1)
-        abs_td_error = np.zeros(datasize) # to log the TD error of the last update
-        for act in range(n_actions):
-            action_idx = data["a"] == act
-            if action_idx.any():  # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
-                td_error_act = (td_target - td_prediction[:, act])
-                abs_td_error[action_idx] = np.abs(td_error_act[action_idx])  # get the TD error of the right action only
-                gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
-                weights[:, act] += alpha * gradient
-        abs_td_error = abs_td_error.mean()
-
-    return abs_td_error
-
 def fqi(seed, N, K, D):
     data = dict()
     # init dataset
-
+    data = {"s": [], "a": [], "r": [], "s_next": [], "term": []}
     eps = 1.0
     idx_data = 0
     tot_steps = 0
@@ -85,8 +47,6 @@ def fqi(seed, N, K, D):
     exp_return_history = np.zeros((max_steps))
     td_error_history = np.zeros((max_steps))
     pbar = tqdm(total=max_steps)
-
-    dataset = []
 
     while True:
         s, _ = env.reset(seed=seed+tot_steps)  # note that this does not make really unique seeds, but let's keep it simple
@@ -100,31 +60,44 @@ def fqi(seed, N, K, D):
             s_next, r, terminated, truncated, _ = env.step(a)
             done = terminated or truncated
             
-            # data["s"], data["a"], data["r"], data["s_next"], data["term"] = s, a, r, s_next, terminated
-            dataset.append((s, a, r, s_next, done))
-            # after datasize steps (D samples), do FQI
-            if len(dataset) > datasize:
-                dataset.pop(0)
+            data["s"].append(s)
+            data["a"].append(a)
+            data["r"].append(r)
+            data["s_next"].append(s_next)
+            data["term"].append(terminated)
 
-            if len(dataset) == D:
+            # after datasize steps (D samples), do FQI
+            if len(data["s"]) > D:
+                for key in data.keys():
+                    data[key].pop(0)
+
+            if len(data["s"]) == D:
                 # for fitting_iterations (K)
-                for iter in range(K):
+                for _ in range(K):
                     weights_before_fit = weights.copy()
                     # fix target
-                    # y = data["r"][i] + gamma * max(Q[s_next], axis = -1)
                     # for gradient_steps (N)
-                    for steps in range(N):
+                    for _ in range(N):
                         weights_before_step = weights.copy()
                         # gradient descent
-                        # weights = np.argmin(0.5*())
-                        # # save abs TD error (see snippet from A6)
-                        # td_error_history[tot_steps] = save_td_error(data)
-                        for (s, a, r, s_next, done) in dataset:
-                            td_error = td_error_function(s, a, r, s_next, done, weights, gamma)
-                            phi = get_phi(s)
-                            weights[:, a] += alpha * td_error * phi.flatten()
+                        # save abs TD error (see snippet from A6)
+                        abs_td_error = np.zeros(D)
+                        for i in data:
+                            s, a, r, s_next, term = data["s"][i], data["a"][i], data["r"][i], data["s_next"][i], data["term"][i]
 
-                        abs_td_error = np.abs(td_error)
+                            phi = get_phi(s)
+                            phi_next = get_phi(s_next)
+                            td_prediction = np.dot(phi, weights)
+                            td_target = r + gamma * (1.0 - term) * np.dot(phi_next, weights).max(-1)
+                            abs_td_error = np.zeros(D) # to log the TD error of the last update
+                            for act in range(n_actions):
+                                action_idx = data["a"] == act
+                                if action_idx.any():  # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
+                                    td_error_act = (td_target - td_prediction[:, act])
+                                    abs_td_error[action_idx] = np.abs(td_error_act[action_idx])  # get the TD error of the right action only
+                                    gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
+                                    weights[:, act] += alpha * gradient
+                            abs_td_error = abs_td_error.mean()
 
                         if np.allclose(weights, weights_before_step, rtol=1e-5, atol=1e-5): break
                     if np.allclose(weights, weights_before_fit, rtol=1e-5, atol=1e-5):  break
