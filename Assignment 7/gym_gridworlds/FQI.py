@@ -55,7 +55,7 @@ def fqi(seed, N, K, D):
         while not done and tot_steps < max_steps:
             # collect samples: select act, do env step, store sample
             phi = get_phi(s)
-            Q = np.dot(phi * weights).ravel()
+            Q = np.dot(phi, weights)
             a = eps_greedy_action(Q, eps)
             s_next, r, terminated, truncated, _ = env.step(a)
             done = terminated or truncated
@@ -82,7 +82,7 @@ def fqi(seed, N, K, D):
                         # gradient descent
                         # save abs TD error (see snippet from A6)
                         abs_td_error = np.zeros(D)
-                        for i in data:
+                        for i in range(len(data["s"])):
                             s, a, r, s_next, term = data["s"][i], data["a"][i], data["r"][i], data["s_next"][i], data["term"][i]
 
                             phi = get_phi(s)
@@ -91,7 +91,7 @@ def fqi(seed, N, K, D):
                             td_target = r + gamma * (1.0 - term) * np.dot(phi_next, weights).max(-1)
                             abs_td_error = np.zeros(D) # to log the TD error of the last update
                             for act in range(n_actions):
-                                action_idx = data["a"] == act
+                                action_idx = np.array(data["a"]) == act
                                 if action_idx.any():  # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
                                     td_error_act = (td_target - td_prediction[:, act])
                                     abs_td_error[action_idx] = np.abs(td_error_act[action_idx])  # get the TD error of the right action only
