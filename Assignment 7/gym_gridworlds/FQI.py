@@ -83,16 +83,16 @@ def fqi(seed, N, K, D):
                         weights_before_step = weights.copy()
                         # gradient descent
                         # save abs TD error (see snippet from A6)
+                        phi_batch = np.array([get_phi(s) for s in data["s"]])
+                        td_prediction_batch = np.dot(phi_batch, weights)
                         abs_td_error = np.zeros(D) # to log the TD error of the last update
                         for act in range(n_actions):
                             action_idx = np.array(data["a"]) == act
                             if action_idx.any(): # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
-                                phi_batch = np.array([get_phi(s) for s in data["s"]])
-                                td_prediction_batch = np.dot(phi_batch, weights)
                                 td_error_act = td_target_batch - td_prediction_batch[:, act]
                                 abs_td_error[action_idx] = np.abs(td_error_act[action_idx])
                                 
-                                gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
+                                gradient = (td_error_act[..., None] * phi_batch)[action_idx].mean(0)
                                 weights[:, act] += alpha * gradient
                         
                         abs_td_error = abs_td_error.mean()
