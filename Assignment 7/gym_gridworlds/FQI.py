@@ -67,40 +67,42 @@ def fqi(seed, N, K, D):
             data["term"].append(terminated)
 
             # after datasize steps (D samples), do FQI
-            if len(data["s"]) > D:
-                for key in data.keys():
-                    data[key].pop(0)
-
             if len(data["s"]) == D:
                 # for fitting_iterations (K)
                 for _ in range(K):
                     weights_before_fit = weights.copy()
                     # fix target
+                    td_target_batch = np.zeros((D, n_actions))
+                    for i in range(D):
+                        s, a, r, s_next, term = data["s"][i], data["a"][i], data["r"][i], data["s_next"][i], data["term"][i]
+                        phi_next_i = get_phi(s_next)
+                        td_target_batch[i] = r + gamma * (1.0 - term) * np.dot(phi_next_i, weights).max(-1)
+
                     # for gradient_steps (N)
                     for _ in range(N):
                         weights_before_step = weights.copy()
                         # gradient descent
                         # save abs TD error (see snippet from A6)
-                        abs_td_error = np.zeros(D)
-                        for i in range(len(data["s"])):
-                            s, a, r, s_next, term = data["s"][i], data["a"][i], data["r"][i], data["s_next"][i], data["term"][i]
-
-                            phi = get_phi(s)
-                            phi_next = get_phi(s_next)
-                            td_prediction = np.dot(phi, weights)
-                            td_target = r + gamma * (1.0 - term) * np.dot(phi_next, weights).max(-1)
-                            abs_td_error = np.zeros(D) # to log the TD error of the last update
-                            for act in range(n_actions):
-                                action_idx = np.array(data["a"]) == act
-                                if action_idx.any():  # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
-                                    td_error_act = (td_target - td_prediction[:, act])
-                                    abs_td_error[action_idx] = np.abs(td_error_act[action_idx])  # get the TD error of the right action only
-                                    gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
-                                    weights[:, act] += alpha * gradient
-                            abs_td_error = abs_td_error.mean()
+                        abs_td_error = np.zeros(D) # to log the TD error of the last update
+                        for act in range(n_actions):
+                            action_idx = np.array(data["a"]) == act
+                            if action_idx.any(): # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
+                                phi_batch = np.array([get_phi(s) for s in data["s"]])[action_idx]
+                                td_prediction_batch = np.dot(phi_batch, weights)
+                                td_target_act = td_target_batch[:, act][action_idx]
+                                td_error_act = td_target_act - td_prediction_batch[:, act]
+                                abs_td_error[action_idx] = np.abs(td_error_act[action_idx])
+                                
+                                # gradient = (td_error_act[..., None] * phi)[action_idx].mean(0)
+                                gradient = (td_error_act[..., None] * phi_batch).mean(0)
+                                weights[:, act] += alpha * gradient
+                        
+                        abs_td_error = abs_td_error.mean()
 
                         if np.allclose(weights, weights_before_step, rtol=1e-5, atol=1e-5): break
                     if np.allclose(weights, weights_before_fit, rtol=1e-5, atol=1e-5):  break
+
+                data =  {"s": [], "a": [], "r": [], "s_next": [], "term": []}
 
             if tot_steps % log_frequency == 0:
                 exp_return = expected_return(env_eval, weights, gamma, episodes_eval)
@@ -152,7 +154,7 @@ gamma = 0.99
 alpha = 0.05
 max_steps = 10000
 log_frequency = 100
-n_seeds = 3#10
+n_seeds = 1# 10
 
 results_ret = np.zeros((
     len(gradient_steps_sweep),
