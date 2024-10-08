@@ -60,42 +60,40 @@ def fqi(seed, N, K, D):
             s_next, r, terminated, truncated, _ = env.step(a)
             done = terminated or truncated
             
-            data["s"].append(s)
+            data["s"].append(get_phi(s))
             data["a"].append(a)
             data["r"].append(r)
-            data["s_next"].append(s_next)
+            data["s_next"].append(get_phi(s_next))
             data["term"].append(terminated)
 
             # after datasize steps (D samples), do FQI
             if len(data["s"]) == D:
+
+                data["s"] = np.array(data["s"]).squeeze(1)
+                data["a"] = np.array(data["a"])
+                data["r"] = np.array(data["r"])
+                data["s_next"] = np.array(data["s_next"]).squeeze(1)
+                data["term"] = np.array(data["term"])
+
                 # for fitting_iterations (K)
                 for _ in range(K):
                     weights_before_fit = weights.copy()
                     # fix target
-                    td_target_batch = np.zeros((D, n_actions))
-                    for i in range(D):
-                        s, a, r, s_next, term = data["s"][i], data["a"][i], data["r"][i], data["s_next"][i], data["term"][i]
-                        phi_next_i = get_phi(s_next)
-                        td_target_batch[i] = r + gamma * (1.0 - term) * np.dot(phi_next_i, weights).max(-1)
+                    td_target_batch = data["r"] + gamma * (1.0 - data["term"]) * np.dot(data["s_next"], weights).max(-1)
 
                     # for gradient_steps (N)
                     for _ in range(N):
                         weights_before_step = weights.copy()
                         # gradient descent
                         # save abs TD error (see snippet from A6)
-                        phi_batch = np.array([get_phi(s) for s in data["s"]])
-                        td_prediction_batch = np.dot(phi_batch, weights)
-                        abs_td_error = np.zeros(D) # to log the TD error of the last update
+                        # phi_batch = np.array([get_phi(s) for s in data["s"]])
+                        td_prediction_batch = np.dot(data["s"], weights)
+                        td_prediction_batch = np.array([q[a] for q, a in zip(td_prediction_batch, data["a"])])
+                        td_error_batch = td_target_batch - td_prediction_batch
+                        abs_td_error = np.mean(np.abs(td_error_batch))
                         for act in range(n_actions):
-                            action_idx = np.array(data["a"]) == act
-                            if action_idx.any(): # if the data does not have all actions, the missing action data will be [] and np.mean() will return np.nan
-                                td_error_act = td_target_batch - td_prediction_batch[:, act]
-                                abs_td_error[action_idx] = np.abs(td_error_act[action_idx])
-                                
-                                gradient = (td_error_act[..., None] * phi_batch)[action_idx].mean(0)
-                                weights[:, act] += alpha * gradient
-                        
-                        abs_td_error = abs_td_error.mean()
+                            mask = (data["a"] == act)
+                            weights[:, act] += alpha * np.dot(data["s"][mask].T, td_error_batch[mask])
 
                         if np.allclose(weights, weights_before_step, rtol=1e-5, atol=1e-5): break
                     if np.allclose(weights, weights_before_fit, rtol=1e-5, atol=1e-5):  break
@@ -149,7 +147,7 @@ gradient_steps_sweep = [1, 100, 1000]  # N in pseudocode
 fitting_iterations_sweep = [1, 100, 1000]  # K in pseudocode
 datasize_sweep = [1, 100, 1000]  # D in pseudocode
 gamma = 0.99
-alpha = 0.05
+alpha = 0.01
 max_steps = 10000
 log_frequency = 100
 n_seeds = 1# 10
