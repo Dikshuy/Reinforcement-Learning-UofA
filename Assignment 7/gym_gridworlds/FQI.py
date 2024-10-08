@@ -68,7 +68,6 @@ def fqi(seed, N, K, D):
 
             # after datasize steps (D samples), do FQI
             if len(data["s"]) == D:
-
                 data["s"] = np.array(data["s"]).squeeze(1)
                 data["a"] = np.array(data["a"])
                 data["r"] = np.array(data["r"])
@@ -86,14 +85,13 @@ def fqi(seed, N, K, D):
                         weights_before_step = weights.copy()
                         # gradient descent
                         # save abs TD error (see snippet from A6)
-                        # phi_batch = np.array([get_phi(s) for s in data["s"]])
-                        td_prediction_batch = np.dot(data["s"], weights)
-                        td_prediction_batch = np.array([q[a] for q, a in zip(td_prediction_batch, data["a"])])
-                        td_error_batch = td_target_batch - td_prediction_batch
-                        abs_td_error = np.mean(np.abs(td_error_batch))
+                        td_prediction = np.dot(data["s"], weights)
+                        td_prediction_batch = np.array([td[a] for td, a in zip(td_prediction, data["a"])])
+                        td_error = td_target_batch - td_prediction_batch
+                        abs_td_error = np.mean(np.abs(td_error))
                         for act in range(n_actions):
                             mask = (data["a"] == act)
-                            weights[:, act] += alpha * np.dot(data["s"][mask].T, td_error_batch[mask])
+                            weights[:, act] += alpha * np.dot(td_error[mask], data["s"][mask])
 
                         if np.allclose(weights, weights_before_step, rtol=1e-5, atol=1e-5): break
                     if np.allclose(weights, weights_before_fit, rtol=1e-5, atol=1e-5):  break
@@ -147,10 +145,10 @@ gradient_steps_sweep = [1, 100, 1000]  # N in pseudocode
 fitting_iterations_sweep = [1, 100, 1000]  # K in pseudocode
 datasize_sweep = [1, 100, 1000]  # D in pseudocode
 gamma = 0.99
-alpha = 0.01
+alpha = 0.005
 max_steps = 10000
 log_frequency = 100
-n_seeds = 1# 10
+n_seeds = 10
 
 results_ret = np.zeros((
     len(gradient_steps_sweep),
