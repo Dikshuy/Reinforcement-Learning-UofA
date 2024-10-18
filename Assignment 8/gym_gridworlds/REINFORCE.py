@@ -1,5 +1,4 @@
 import gymnasium
-import gym_gridworlds
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -57,8 +56,7 @@ def collect_data(env, weights, sigma, n_episodes):
 
 def eps_greedy_action(phi, weights, eps):
     if np.random.rand() < eps:
-        # return np.random.randint(n_actions)       # CHANGE
-        pass
+        return np.random.randint(n_actions)
     else:
         Q = np.dot(phi, weights).ravel()
         best = np.argwhere(Q == Q.max())
@@ -77,7 +75,7 @@ def softmax_action(phi, weights, eps):
     probs = softmax_probs(phi, weights, eps)
     return np.random.choice(weights.shape[1], p=probs.ravel())
 
-def dlog_softmax_probs(phi, weights, eps, act):         # CHANGE
+def dlog_softmax_probs(phi, weights, eps, act):
     # implement log-derivative of pi
     pass
 
@@ -85,13 +83,24 @@ def gaussian_action(phi, weights, sigma: np.array):
     mu = np.dot(phi, weights)
     return np.random.normal(mu, sigma**2)
 
-def dlog_gaussian_probs(phi, weights, sigma, action: np.array):         # CHANGE
+def dlog_gaussian_probs(phi, weights, sigma, action: np.array):
     # implement log-derivative of pi with respect to the mean only
-    pass
+    mu = np.dot(phi, weights)
+    return phi * (action - mu) / (sigma**2)
+
+def compute_mc_returns(rewards, gamma, dones):
+    G = np.zeros_like(rewards)
+    g = 0
+    for t in reversed(range(len(rewards))):
+        if dones[t]:
+            g = 0
+        g = rewards[t] + gamma * g
+        G[t] = g
+    return G
 
 def reinforce(baseline="none"):
     weights = np.zeros((phi_dummy.shape[1], action_dim))
-    sigma = 1.0  # for Gaussian
+    sigma = 2.0  # for Gaussian
     eps = 1.0  # softmax temperature, DO NOT DECAY
     tot_steps = 0
     exp_return_history = np.zeros(max_steps)
@@ -100,12 +109,35 @@ def reinforce(baseline="none"):
 
     while tot_steps < max_steps:
         # collect data
-        # compute MC return
-        # compute gradient of all samples (with/without baseline)
-        # average gradient over all samples
-        # update weights
+        data = collect_data(env, weights, sigma, episodes_per_update)
+        phi = np.vstack(data["phi"])
+        a = np.vstack(data["a"])
+        r = np.vstack(data["r"])
+        done = np.vstack(data["done"])
 
-        T = ... # steps taken while collecting data
+        # compute MC return
+        G = compute_mc_returns(r, gamma, done)
+
+        # compute gradient of all samples (with/without baseline)
+        dlog_pi = dlog_gaussian_probs(phi, weights, sigma, a)
+
+        if baseline == "none":
+            b = 0
+        elif baseline == "mean_return":
+            b = np.mean(G)
+        else:
+            b = np.sum(np.sum(dlog_pi**2, axis=1) * G) / np.sum(np.sum(dlog_pi**2, axis=1))
+
+        # average gradient over all samples
+        gradient = np.zeros_like(weights)
+        for t in range(len(G)):
+            gradient += dlog_pi[t].reshape(-1, 1) * (G[t] - b)
+        gradient /= len(G)
+
+        # update weights
+        weights += alpha * gradient
+
+        T = len(G) # steps taken while collecting data
         exp_return_history[tot_steps : tot_steps + T] = exp_return
         tot_steps += T
         exp_return = expected_return(env_eval, weights, gamma, episodes_eval)
@@ -154,12 +186,11 @@ action_dim = env.action_space.shape[0]
 
 # UNCOMMENT TO SOLVE THE GRIDWORLD
 # env_id = "Gym-Gridworlds/Penalty-3x3-v0"
-# env = gymnasium.make(env_id, coordinate_observation=True, distance_reward=True)
+# env = gymnasium.make(env_id, coordinate_observation=True, max_episode_steps=10000)
 # env_eval = gymnasium.make(env_id, coordinate_observation=True, max_episode_steps=10)  # 10 steps only for faster eval
 # episodes_eval = 1  # max expected return will be 0.941
 # state_dim = env.observation_space.shape[0]
 # n_actions = env.action_space.n
-
 
 # automatically set centers and sigmas
 n_centers = [7] * state_dim
@@ -184,7 +215,7 @@ gamma = 0.99
 alpha = 0.1
 episodes_per_update = 10
 max_steps = 1000000  # 100000 for the Gridworld
-baselines = ["none", "mean_return", "optimal"]
+baselines = ["none", "mean_return", "min_variance"]
 n_seeds = 10
 results_exp_ret = np.zeros((
     len(baselines),
