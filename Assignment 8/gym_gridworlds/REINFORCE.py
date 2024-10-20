@@ -1,5 +1,5 @@
 import gymnasium
-# import gym_gridworlds
+import gym_gridworlds
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -136,13 +136,13 @@ def reinforce(baseline="none"):
         elif baseline == "mean_return":
             b = np.mean(G)
         else:
-            # b = np.sum(np.sum(dlog_pi**2, axis=1) * G) / np.sum(np.sum(dlog_pi**2, axis=1))
-            b = np.sum((dlog_pi**2) * G) / np.sum(dlog_pi**2)           # CHECK WHETHER THIS IS CORRECT OR NOT
+            # b = np.sum((dlog_pi**2) * G) / np.sum(dlog_pi**2)                                 # PENDULUM
+            b = np.sum(np.sum(dlog_pi**2, axis=1) * G) / np.sum(np.sum(dlog_pi**2, axis=1))     # GRIDWORLD
 
         # average gradient over all samples
         gradient = np.zeros_like(weights)
         for t in range(len(G)):
-            gradient += dlog_pi[t].reshape(-1, 1) * (G[t] - b)
+            gradient += dlog_pi[t] * (G[t] - b)
         gradient /= len(G)
 
         # update weights
